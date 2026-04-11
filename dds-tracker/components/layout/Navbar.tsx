@@ -1,14 +1,17 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { Home, LayoutDashboard, ArrowLeftRight, BarChart3, Landmark, Sun, Moon, UserRound } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useTransactionStore } from '@/store/useTransactionStore'
-import { useEffect, useState } from 'react'
 import { Logo } from '@/components/Logo'
 import { UserProfileModal } from '@/components/UserProfileModal'
+import { supabase } from '@/lib/supabase'
+import { getAuthUser } from '@/lib/auth'
 
 const NAV_ITEMS = [
   { href: '/', label: 'Главная', icon: Home },
@@ -23,9 +26,30 @@ export function Navbar() {
   const { bootstrap, profile, settings, updateSettings } = useTransactionStore()
   const theme = settings.theme
   const [showProfile, setShowProfile] = useState(false)
+  const [authUser, setAuthUser] = useState<User | null>(null)
 
   useEffect(() => {
     bootstrap()
+
+    let active = true
+
+    getAuthUser().then((user) => {
+      if (!active) return
+      setAuthUser(user)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null
+      setAuthUser(user)
+      if (user) bootstrap()
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
   }, [bootstrap])
 
   return (
@@ -49,7 +73,14 @@ export function Navbar() {
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
-              <Link key={href} href={href} className={cn('relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0', active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white')}>
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0',
+                  active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                )}
+              >
                 {active && <motion.div layoutId="nav-pill" className="absolute inset-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800" transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }} />}
                 <Icon size={15} className="relative z-10" />
                 <span className="relative z-10">{label}</span>
@@ -60,8 +91,12 @@ export function Navbar() {
 
         <div className="ml-auto flex items-center gap-1.5 md:gap-2 flex-shrink-0 md:pr-2">
           <div className="hidden lg:block text-right mr-1">
-            <div className="text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[180px]">{profile.fullName || 'Профиль'}</div>
-            <div className="text-[11px] text-slate-400 dark:text-gray-500 truncate max-w-[180px]">{profile.city || profile.email || 'Локальный пользователь'}</div>
+            <div className="text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[180px]">
+              {profile.fullName || 'Профиль'}
+            </div>
+            <div className="text-[11px] text-slate-400 dark:text-gray-500 truncate max-w-[220px]">
+              {authUser?.email || profile.city || profile.email || 'Локальный пользователь'}
+            </div>
           </div>
 
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 md:p-1 gap-0.5 md:border md:border-slate-200/70 dark:md:border-slate-700">
@@ -86,7 +121,7 @@ export function Navbar() {
 
         <button
           onClick={() => setShowProfile(true)}
-          title="Профиль пользователя"
+          title="Личный кабинет"
           className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 md:border md:border-slate-200/70 dark:md:border-slate-700 text-slate-500 dark:text-gray-300 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           <UserRound size={13} />
@@ -97,7 +132,12 @@ export function Navbar() {
         {showProfile && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowProfile(false)}>
             <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-              <UserProfileModal onClose={() => setShowProfile(false)} />
+              <UserProfileModal
+                onClose={() => setShowProfile(false)}
+                isAuthenticated={Boolean(authUser)}
+                authEmail={authUser?.email ?? ''}
+                onAuthSuccess={bootstrap}
+              />
             </motion.div>
           </motion.div>
         )}

@@ -258,6 +258,10 @@ export const useTransactionStore = create<TransactionStore>()(
       loadFromSupabase: async () => {
         try {
           const data = await dbLoadAll()
+          if (!data) {
+            set({ supabaseLoaded: true })
+            return
+          }
 
           // Первый запуск: нет счетов в БД → вставляем дефолтные
           if (data.accounts.length === 0) {
