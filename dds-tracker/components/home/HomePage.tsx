@@ -155,51 +155,53 @@ function QuickTextBar() {
         <span className="text-xs font-semibold text-slate-700 dark:text-gray-300">Быстрый ввод</span>
         <span className="text-xs text-slate-400 dark:text-gray-600">напишите текстом</span>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           ref={inputRef}
           value={text}
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           placeholder="кофе 250, зарплата +50000, такси 400..."
-          className="flex-1 bg-slate-50 dark:bg-[#0d0d14] border border-slate-200 dark:border-white/8 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400/60"
+          className="flex-1 min-w-0 bg-slate-50 dark:bg-[#0d0d14] border border-slate-200 dark:border-white/8 rounded-xl px-3 py-3 sm:py-2 text-sm text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400/60"
         />
-        {voiceSupported && (
-          <button
-            type="button"
-            onClick={toggleVoiceInput}
-            title={isListening ? 'Остановить запись' : 'Голосовой ввод'}
-            className={cn(
-              'w-10 h-10 rounded-xl border flex items-center justify-center transition-colors',
-              isListening
-                ? 'bg-red-500/12 border-red-500/30 text-red-500'
-                : 'bg-slate-50 dark:bg-[#0d0d14] border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-400 hover:border-indigo-400/40 hover:text-indigo-500'
-            )}
-          >
-            {isListening ? <Square size={14} /> : <Mic size={15} />}
-          </button>
-        )}
-        <AnimatePresence mode="wait">
-          {saved ? (
-            <motion.div
-              key="ok"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              className="w-10 h-10 rounded-xl bg-green-500/15 border border-green-500/25 flex items-center justify-center text-green-500"
+        <div className={`grid gap-2 ${voiceSupported ? 'grid-cols-2' : 'grid-cols-1'} sm:flex`}>
+          {voiceSupported && (
+            <button
+              type="button"
+              onClick={toggleVoiceInput}
+              title={isListening ? 'Остановить запись' : 'Голосовой ввод'}
+              className={cn(
+                'h-11 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center transition-colors',
+                isListening
+                  ? 'bg-red-500/12 border-red-500/30 text-red-500'
+                  : 'bg-slate-50 dark:bg-[#0d0d14] border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-400 hover:border-indigo-400/40 hover:text-indigo-500'
+              )}
             >
-              <Check size={16} />
-            </motion.div>
-          ) : (
-            <motion.button
-              key="btn"
-              onClick={handleSubmit}
-              disabled={!preview?.amount}
-              className="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors disabled:opacity-30"
-            >
-              <ArrowRight size={15} />
-            </motion.button>
+              {isListening ? <Square size={14} /> : <Mic size={15} />}
+            </button>
           )}
-        </AnimatePresence>
+          <AnimatePresence mode="wait">
+            {saved ? (
+              <motion.div
+                key="ok"
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className="h-11 sm:w-10 sm:h-10 rounded-xl bg-green-500/15 border border-green-500/25 flex items-center justify-center text-green-500"
+              >
+                <Check size={16} />
+              </motion.div>
+            ) : (
+              <motion.button
+                key="btn"
+                onClick={handleSubmit}
+                disabled={!preview?.amount}
+                className="h-11 sm:w-10 sm:h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors disabled:opacity-30"
+              >
+                <ArrowRight size={15} />
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
       <AnimatePresence>
         {preview && preview.amount && cat && (
@@ -207,7 +209,7 @@ function QuickTextBar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400"
+            className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-gray-400"
           >
             <span>{cat.emoji}</span>
             <span>{cat.name}</span>
@@ -386,14 +388,14 @@ function QuickAddForm() {
           onChange={(e) => handleAmountChange(e.target.value)}
           placeholder="0"
           required
-          className="w-full bg-slate-50 dark:bg-[#0d0d14] border-2 border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500/60 transition-colors text-2xl font-bold pr-12"
+          className="w-full bg-slate-50 dark:bg-[#0d0d14] border-2 border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500/60 transition-colors text-xl sm:text-2xl font-bold pr-12"
         />
         <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 text-lg font-semibold">₽</span>
       </div>
 
       <div>
         <p className="text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Категория</p>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
           {availableCategories.map((cat) => (
             <button
               key={cat.id}
@@ -458,7 +460,7 @@ function QuickAddForm() {
                   </button>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={tagInput}
@@ -511,7 +513,7 @@ function QuickAddForm() {
 export function HomePage() {
   return (
     <div className="py-2 w-full space-y-4">
-      <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)] lg:gap-5 lg:space-y-0 lg:items-start">
+      <div className="space-y-3 lg:space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)] lg:gap-5 lg:space-y-0 lg:items-start">
         <div className="space-y-4 min-w-0">
           <SummaryStrip />
           <HomeGoalCard />
@@ -521,7 +523,7 @@ export function HomePage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 md:p-5 lg:sticky lg:top-[96px]"
+          className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3.5 md:p-5 lg:sticky lg:top-[96px]"
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-xl bg-indigo-500 flex items-center justify-center shadow-sm shadow-indigo-500/20">

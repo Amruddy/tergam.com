@@ -88,7 +88,7 @@ export function TransactionForm({ editingTx, onClose }: Props) {
   const inputCls = 'w-full bg-slate-50 dark:bg-[#0a0a0f] border border-slate-200 dark:border-[#1e1e2e] rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500/50 transition-colors'
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-6 space-y-5 transition-colors duration-300">
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 md:p-6 space-y-4 md:space-y-5 transition-colors duration-300">
       <div className="flex items-center justify-between">
         <h3 className="text-slate-900 dark:text-white font-semibold">{editingTx ? 'Редактировать' : 'Добавить транзакцию'}</h3>
         {onClose && (
@@ -121,14 +121,14 @@ export function TransactionForm({ editingTx, onClose }: Props) {
       <div>
         <label className="text-xs text-slate-500 dark:text-gray-500 block mb-1.5">Сумма</label>
         <div className="relative">
-          <input type="text" value={formatDisplay(amount)} onChange={(e) => handleAmountChange(e.target.value)} placeholder="0" required className={cn(inputCls, 'text-lg font-semibold pr-8')} />
+          <input type="text" value={formatDisplay(amount)} onChange={(e) => handleAmountChange(e.target.value)} placeholder="0" required className={cn(inputCls, 'text-base sm:text-lg font-semibold pr-8')} />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 font-medium">₽</span>
         </div>
       </div>
 
       <div>
         <label className="text-xs text-slate-500 dark:text-gray-500 block mb-1.5">Категория</label>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {availableCategories.map((cat) => (
             <button
               key={cat.id}
@@ -186,7 +186,7 @@ export function TransactionForm({ editingTx, onClose }: Props) {
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={tagInput}
