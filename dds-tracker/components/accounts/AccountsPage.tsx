@@ -190,7 +190,7 @@ function AccountCard({
   const positive = balance >= 0
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 md:p-5">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 md:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: `${account.color}16` }}>
@@ -216,16 +216,16 @@ function AccountCard({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-1">Текущий баланс</div>
-          <div className={cn('text-xl font-bold', positive ? 'text-slate-900 dark:text-white' : 'text-red-500')}>
+          <div className={cn('text-lg xl:text-xl font-bold break-words', positive ? 'text-slate-900 dark:text-white' : 'text-red-500')}>
             {formatCurrency(balance, settings.currency)}
           </div>
         </div>
         <div className="text-right">
           <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-1">Изменение за месяц</div>
-          <div className={cn('text-sm font-semibold', monthChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500')}>
+          <div className={cn('text-sm font-semibold break-words', monthChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500')}>
             {monthChange >= 0 ? '+' : '−'}{formatCurrency(Math.abs(monthChange), settings.currency)}
           </div>
         </div>

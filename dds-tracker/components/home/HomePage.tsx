@@ -44,7 +44,7 @@ function SummaryStrip() {
   }, [accounts, transactions, transfers])
 
   return (
-    <div className="grid grid-cols-3 gap-2 xl:gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 xl:gap-3">
       {[
         { label: 'Доходы', value: stats.income, icon: TrendingUp, color: '#22c55e', sign: '+' },
         { label: 'Расходы', value: stats.expense, icon: TrendingDown, color: '#ef4444', sign: '−' },
@@ -55,13 +55,13 @@ function SummaryStrip() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.07 }}
-          className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl px-3 py-3 xl:px-4 xl:py-4 text-center"
+          className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl px-3 py-3 xl:px-4 xl:py-4 text-center"
         >
           <div className="w-7 h-7 xl:w-8 xl:h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style={{ background: `${color}18` }}>
             <Icon size={14} style={{ color }} />
           </div>
           <div className="text-xs text-slate-400 dark:text-gray-500 mb-0.5">{label}</div>
-          <div className="text-sm xl:text-base font-bold text-slate-900 dark:text-white leading-tight">
+          <div className="text-sm xl:text-base font-bold text-slate-900 dark:text-white leading-tight break-words">
             {sign}{formatCurrency(Math.abs(value), settings.currency)}
           </div>
         </motion.div>
@@ -290,18 +290,18 @@ function HomeGoalCard() {
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
             <div className="text-[11px] text-slate-400 dark:text-gray-500">Накоплено</div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(goal.savedAmount, settings.currency)}</div>
+            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.savedAmount, settings.currency)}</div>
           </div>
           <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
             <div className="text-[11px] text-slate-400 dark:text-gray-500">Осталось</div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(remaining, settings.currency)}</div>
+            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(remaining, settings.currency)}</div>
           </div>
           <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
             <div className="text-[11px] text-slate-400 dark:text-gray-500">Цель</div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(goal.targetAmount, settings.currency)}</div>
+            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.targetAmount, settings.currency)}</div>
           </div>
         </div>
       </div>

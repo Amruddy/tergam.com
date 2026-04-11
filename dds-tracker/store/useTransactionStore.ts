@@ -3,25 +3,27 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import {
-  Transaction,
-  Settings,
-  Budget,
-  Goal,
-  RecurringTransaction,
-  Account,
-  Transfer,
-  UserProfile,
+  Transaction, Settings, Budget, Goal,
+  RecurringTransaction, Account, Transfer, UserProfile,
 } from '@/types'
 import { generateId, getDayKey, getMonthKey } from '@/lib/utils'
 import { DEFAULT_ACCOUNTS, getDefaultAccountId } from '@/lib/accounts'
+import {
+  dbLoadAll,
+  dbUpsertAccount, dbDeleteAccount,
+  dbUpsertTransaction, dbDeleteTransaction,
+  dbUpsertTransfer, dbDeleteTransfer,
+  dbUpsertBudget, dbDeleteBudget,
+  dbUpsertGoal, dbDeleteGoal,
+  dbUpsertRecurring, dbDeleteRecurring,
+  dbUpsertSettings,
+} from '@/lib/db'
 
 function shouldApply(rec: RecurringTransaction, today: Date): boolean {
   if (!rec.active) return false
   const todayKey = getDayKey(today)
   if (rec.lastApplied === todayKey) return false
-
   if (!rec.lastApplied) return true
-
   const last = new Date(rec.lastApplied)
   if (rec.frequency === 'daily') return todayKey > rec.lastApplied
   if (rec.frequency === 'weekly') {
@@ -44,6 +46,7 @@ interface TransactionStore {
   profile: UserProfile
   settings: Settings
   initialized: boolean
+  supabaseLoaded: boolean
 
   addTransaction: (t: Omit<Transaction, 'id' | 'createdAt'>) => void
   updateTransaction: (id: string, t: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => void
@@ -73,6 +76,7 @@ interface TransactionStore {
   updateProfile: (p: Partial<UserProfile>) => void
   resetAllData: () => void
   bootstrap: () => void
+  loadFromSupabase: () => Promise<void>
 }
 
 export const useTransactionStore = create<TransactionStore>()(
@@ -84,99 +88,123 @@ export const useTransactionStore = create<TransactionStore>()(
       budgets: [],
       goals: [],
       recurring: [],
-      profile: {
-        fullName: '',
-        email: '',
-        phone: '',
-        city: '',
-      },
-      settings: {
-        currency: 'RUB',
-        theme: 'dark',
-      },
+      profile: { fullName: '', email: '', phone: '', city: '' },
+      settings: { currency: 'RUB', theme: 'dark' },
       initialized: false,
+      supabaseLoaded: false,
 
-      addTransaction: (t) =>
-        set((s) => ({
-          transactions: [{ ...t, id: generateId(), createdAt: new Date().toISOString() }, ...s.transactions],
-        })),
+      addTransaction: (t) => {
+        const newTx: Transaction = { ...t, id: generateId(), createdAt: new Date().toISOString() }
+        set((s) => ({ transactions: [newTx, ...s.transactions] }))
+        dbUpsertTransaction(newTx).catch(console.error)
+      },
 
-      updateTransaction: (id, updates) =>
+      updateTransaction: (id, updates) => {
         set((s) => ({
           transactions: s.transactions.map((t) => t.id === id ? { ...t, ...updates } : t),
-        })),
+        }))
+        const updated = get().transactions.find((t) => t.id === id)
+        if (updated) dbUpsertTransaction(updated).catch(console.error)
+      },
 
-      deleteTransaction: (id) =>
-        set((s) => ({ transactions: s.transactions.filter((t) => t.id !== id) })),
+      deleteTransaction: (id) => {
+        set((s) => ({ transactions: s.transactions.filter((t) => t.id !== id) }))
+        dbDeleteTransaction(id).catch(console.error)
+      },
 
-      addTransfer: (t) =>
+      addTransfer: (t) => {
+        const newTransfer: Transfer = { ...t, id: generateId(), createdAt: new Date().toISOString() }
+        set((s) => ({ transfers: [newTransfer, ...s.transfers] }))
+        dbUpsertTransfer(newTransfer).catch(console.error)
+      },
+
+      deleteTransfer: (id) => {
+        set((s) => ({ transfers: s.transfers.filter((t) => t.id !== id) }))
+        dbDeleteTransfer(id).catch(console.error)
+      },
+
+      addBudget: (b) => {
+        const newBudget: Budget = { ...b, id: generateId(), createdAt: new Date().toISOString() }
+        set((s) => ({ budgets: [...s.budgets, newBudget] }))
+        dbUpsertBudget(newBudget).catch(console.error)
+      },
+
+      updateBudget: (id, updates) => {
+        set((s) => ({ budgets: s.budgets.map((b) => b.id === id ? { ...b, ...updates } : b) }))
+        const updated = get().budgets.find((b) => b.id === id)
+        if (updated) dbUpsertBudget(updated).catch(console.error)
+      },
+
+      deleteBudget: (id) => {
+        set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) }))
+        dbDeleteBudget(id).catch(console.error)
+      },
+
+      addGoal: (g) => {
+        const newGoal: Goal = { ...g, id: generateId(), createdAt: new Date().toISOString() }
+        set((s) => ({ goals: [...s.goals, newGoal] }))
+        dbUpsertGoal(newGoal).catch(console.error)
+      },
+
+      updateGoal: (id, updates) => {
+        set((s) => ({ goals: s.goals.map((g) => g.id === id ? { ...g, ...updates } : g) }))
+        const updated = get().goals.find((g) => g.id === id)
+        if (updated) dbUpsertGoal(updated).catch(console.error)
+      },
+
+      deleteGoal: (id) => {
+        set((s) => ({ goals: s.goals.filter((g) => g.id !== id) }))
+        dbDeleteGoal(id).catch(console.error)
+      },
+
+      addAccount: (a) => {
+        const newAccount: Account = { ...a, archived: a.archived ?? false, id: generateId(), createdAt: new Date().toISOString() }
+        set((s) => ({ accounts: [...s.accounts, newAccount] }))
+        dbUpsertAccount(newAccount).catch(console.error)
+      },
+
+      updateAccount: (id, updates) => {
         set((s) => ({
-          transfers: [{ ...t, id: generateId(), createdAt: new Date().toISOString() }, ...s.transfers],
-        })),
+          accounts: s.accounts.map((a) => a.id === id ? { ...a, ...updates } : a),
+        }))
+        const updated = get().accounts.find((a) => a.id === id)
+        if (updated) dbUpsertAccount(updated).catch(console.error)
+      },
 
-      deleteTransfer: (id) =>
-        set((s) => ({ transfers: s.transfers.filter((t) => t.id !== id) })),
-
-      addBudget: (b) =>
-        set((s) => ({
-          budgets: [...s.budgets, { ...b, id: generateId(), createdAt: new Date().toISOString() }],
-        })),
-
-      updateBudget: (id, updates) =>
-        set((s) => ({ budgets: s.budgets.map((b) => b.id === id ? { ...b, ...updates } : b) })),
-
-      deleteBudget: (id) =>
-        set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
-
-      addGoal: (g) =>
-        set((s) => ({
-          goals: [...s.goals, { ...g, id: generateId(), createdAt: new Date().toISOString() }],
-        })),
-
-      updateGoal: (id, updates) =>
-        set((s) => ({ goals: s.goals.map((g) => g.id === id ? { ...g, ...updates } : g) })),
-
-      deleteGoal: (id) =>
-        set((s) => ({ goals: s.goals.filter((g) => g.id !== id) })),
-
-      addAccount: (a) =>
-        set((s) => ({
-          accounts: [...s.accounts, { ...a, archived: a.archived ?? false, id: generateId(), createdAt: new Date().toISOString() }],
-        })),
-
-      updateAccount: (id, updates) =>
-        set((s) => ({
-          accounts: s.accounts.map((account) => account.id === id ? { ...account, ...updates } : account),
-        })),
-
-      deleteAccount: (id) =>
+      deleteAccount: (id) => {
         set((s) => {
           if (s.accounts.length <= 1) return s
-
-          const fallbackId = s.accounts.find((account) => account.id !== id)?.id ?? getDefaultAccountId()
-
+          const fallbackId = s.accounts.find((a) => a.id !== id)?.id ?? getDefaultAccountId()
           return {
-            accounts: s.accounts.filter((account) => account.id !== id),
+            accounts: s.accounts.filter((a) => a.id !== id),
             transactions: s.transactions.map((tx) => tx.accountId === id ? { ...tx, accountId: fallbackId } : tx),
             recurring: s.recurring.map((rec) => rec.accountId === id ? { ...rec, accountId: fallbackId } : rec),
-            transfers: s.transfers.map((transfer) => ({
-              ...transfer,
-              fromAccountId: transfer.fromAccountId === id ? fallbackId : transfer.fromAccountId,
-              toAccountId: transfer.toAccountId === id ? fallbackId : transfer.toAccountId,
+            transfers: s.transfers.map((tr) => ({
+              ...tr,
+              fromAccountId: tr.fromAccountId === id ? fallbackId : tr.fromAccountId,
+              toAccountId: tr.toAccountId === id ? fallbackId : tr.toAccountId,
             })),
           }
-        }),
+        })
+        dbDeleteAccount(id).catch(console.error)
+      },
 
-      addRecurring: (r) =>
-        set((s) => ({
-          recurring: [...s.recurring, { ...r, id: generateId(), lastApplied: null, createdAt: new Date().toISOString() }],
-        })),
+      addRecurring: (r) => {
+        const newRec: RecurringTransaction = { ...r, id: generateId(), lastApplied: null, createdAt: new Date().toISOString() }
+        set((s) => ({ recurring: [...s.recurring, newRec] }))
+        dbUpsertRecurring(newRec).catch(console.error)
+      },
 
-      updateRecurring: (id, updates) =>
-        set((s) => ({ recurring: s.recurring.map((r) => r.id === id ? { ...r, ...updates } : r) })),
+      updateRecurring: (id, updates) => {
+        set((s) => ({ recurring: s.recurring.map((r) => r.id === id ? { ...r, ...updates } : r) }))
+        const updated = get().recurring.find((r) => r.id === id)
+        if (updated) dbUpsertRecurring(updated).catch(console.error)
+      },
 
-      deleteRecurring: (id) =>
-        set((s) => ({ recurring: s.recurring.filter((r) => r.id !== id) })),
+      deleteRecurring: (id) => {
+        set((s) => ({ recurring: s.recurring.filter((r) => r.id !== id) }))
+        dbDeleteRecurring(id).catch(console.error)
+      },
 
       applyRecurring: () => {
         const { recurring, transactions } = get()
@@ -186,59 +214,79 @@ export const useTransactionStore = create<TransactionStore>()(
 
         const updatedRecurring = recurring.map((rec) => {
           if (!shouldApply(rec, today)) return rec
-
-          newTx.push({
-            id: generateId(),
-            type: rec.type,
-            amount: rec.amount,
-            category: rec.category,
-            accountId: rec.accountId,
-            date: todayKey,
-            description: `${rec.description} (авто)`,
-            tags: rec.tags,
+          const tx: Transaction = {
+            id: generateId(), type: rec.type, amount: rec.amount, category: rec.category,
+            accountId: rec.accountId, date: todayKey,
+            description: `${rec.description} (авто)`, tags: rec.tags,
             createdAt: new Date().toISOString(),
-          })
-
+          }
+          newTx.push(tx)
           return { ...rec, lastApplied: todayKey }
         })
 
         if (newTx.length > 0) {
           set({ transactions: [...newTx, ...transactions], recurring: updatedRecurring })
+          newTx.forEach((tx) => dbUpsertTransaction(tx).catch(console.error))
+          updatedRecurring.forEach((rec, i) => {
+            if (rec !== recurring[i]) dbUpsertRecurring(rec).catch(console.error)
+          })
         }
       },
 
-      updateSettings: (s) =>
-        set((state) => ({ settings: { ...state.settings, ...s } })),
+      updateSettings: (s) => {
+        set((state) => ({ settings: { ...state.settings, ...s } }))
+        const { settings, profile } = get()
+        dbUpsertSettings(settings, profile).catch(console.error)
+      },
 
-      updateProfile: (p) =>
-        set((state) => ({ profile: { ...state.profile, ...p } })),
+      updateProfile: (p) => {
+        set((state) => ({ profile: { ...state.profile, ...p } }))
+        const { settings, profile } = get()
+        dbUpsertSettings(settings, profile).catch(console.error)
+      },
 
-      resetAllData: () =>
+      resetAllData: () => {
         set({
           accounts: DEFAULT_ACCOUNTS,
-          transactions: [],
-          transfers: [],
-          budgets: [],
-          goals: [],
-          recurring: [],
-          profile: {
-            fullName: '',
-            email: '',
-            phone: '',
-            city: '',
-          },
-          settings: {
-            currency: 'RUB',
-            theme: 'dark',
-          },
+          transactions: [], transfers: [], budgets: [], goals: [], recurring: [],
+          profile: { fullName: '', email: '', phone: '', city: '' },
+          settings: { currency: 'RUB', theme: 'dark' },
           initialized: true,
-        }),
+        })
+      },
+
+      loadFromSupabase: async () => {
+        try {
+          const data = await dbLoadAll()
+
+          // Первый запуск: нет счетов в БД → вставляем дефолтные
+          if (data.accounts.length === 0) {
+            const defaults = get().accounts.length > 0 ? get().accounts : DEFAULT_ACCOUNTS
+            await Promise.all(defaults.map((a) => dbUpsertAccount(a)))
+            data.accounts = defaults
+          }
+
+          set({
+            accounts: data.accounts,
+            transactions: data.transactions,
+            transfers: data.transfers,
+            budgets: data.budgets,
+            goals: data.goals,
+            recurring: data.recurring,
+            settings: data.settings ?? get().settings,
+            profile: data.profile ?? get().profile,
+            supabaseLoaded: true,
+          })
+        } catch (e) {
+          console.error('Supabase sync error:', e)
+          set({ supabaseLoaded: true })
+        }
+      },
 
       bootstrap: () => {
         const { initialized } = get()
-        if (!initialized) {
-          set({ initialized: true })
-        }
+        if (!initialized) set({ initialized: true })
+        get().loadFromSupabase()
       },
     }),
     {
@@ -246,28 +294,19 @@ export const useTransactionStore = create<TransactionStore>()(
       version: 4,
       migrate: (persistedState: any) => {
         const accounts: Account[] = Array.isArray(persistedState?.accounts) && persistedState.accounts.length > 0
-          ? persistedState.accounts.map((account: any) => ({
-            ...account,
-            archived: account.archived ?? false,
-          }))
+          ? persistedState.accounts.map((a: any) => ({ ...a, archived: a.archived ?? false }))
           : DEFAULT_ACCOUNTS
         const fallbackId = accounts[0]?.id ?? getDefaultAccountId()
-
         return {
           ...persistedState,
           accounts,
+          supabaseLoaded: false,
           transfers: Array.isArray(persistedState?.transfers) ? persistedState.transfers : [],
           transactions: Array.isArray(persistedState?.transactions)
-            ? persistedState.transactions.map((tx: any) => ({
-              ...tx,
-              accountId: tx.accountId || fallbackId,
-            }))
+            ? persistedState.transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId }))
             : [],
           recurring: Array.isArray(persistedState?.recurring)
-            ? persistedState.recurring.map((rec: any) => ({
-              ...rec,
-              accountId: rec.accountId || fallbackId,
-            }))
+            ? persistedState.recurring.map((rec: any) => ({ ...rec, accountId: rec.accountId || fallbackId }))
             : [],
           profile: {
             fullName: persistedState?.profile?.fullName ?? '',

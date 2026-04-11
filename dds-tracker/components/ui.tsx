@@ -32,7 +32,7 @@ export function PageHeader({
   action?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 min-w-0">
+    <div className="flex flex-wrap items-center justify-between gap-4 min-w-0">
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ background: `${iconColor}18` }}>
           <Icon size={18} style={{ color: iconColor }} />
@@ -42,7 +42,7 @@ export function PageHeader({
           <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">{subtitle}</p>
         </div>
       </div>
-      {action && <div className="flex-shrink-0">{action}</div>}
+      {action && <div className="flex-shrink-0 max-w-full">{action}</div>}
     </div>
   )
 }
@@ -61,14 +61,14 @@ export function StatStrip({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.05 }}
-          className="bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl p-3.5 md:p-4 space-y-2 transition-colors duration-300"
+          className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl p-3.5 md:p-4 space-y-2 transition-colors duration-300"
         >
           <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${color}18` }}>
             <Icon size={14} style={{ color }} />
           </div>
-          <div>
-            <div className="text-[10px] md:text-xs text-slate-400 dark:text-gray-500 leading-tight">{label}</div>
-            <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">{value}</div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs text-slate-400 dark:text-gray-500 leading-tight break-words">{label}</div>
+            <div className="text-sm md:text-[15px] font-bold text-slate-900 dark:text-white mt-0.5 leading-tight break-words">{value}</div>
           </div>
         </motion.div>
       ))}

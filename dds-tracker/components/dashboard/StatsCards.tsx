@@ -21,7 +21,7 @@ function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.4 }}
-      className={`relative bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 md:p-6 overflow-hidden transition-colors duration-300 ${glowClass}`}
+      className={`relative min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 md:p-6 overflow-hidden transition-colors duration-300 ${glowClass}`}
     >
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-3 md:mb-4">
@@ -37,7 +37,7 @@ function StatCard({
           </div>
         </div>
         <div className="text-xs text-slate-500 dark:text-gray-500 mb-0.5">{label}</div>
-        <div className="text-lg md:text-2xl font-bold text-slate-900 dark:text-white leading-tight">
+        <div className="text-base md:text-xl xl:text-2xl font-bold text-slate-900 dark:text-white leading-tight break-words">
           {formatCurrency(amount, settings.currency)}
         </div>
         <div className="text-xs text-slate-400 dark:text-gray-600 mt-1 hidden md:block">vs прошлый месяц</div>
@@ -72,7 +72,7 @@ export function StatsCards() {
   }, [accounts, transactions, transfers])
 
   return (
-    <div className="grid grid-cols-3 gap-3 md:gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
       <StatCard index={0} label="Доходы" amount={stats.income} change={stats.incomeChange}
         icon={TrendingUp} color="#22c55e" glowClass="glow-green" />
       <StatCard index={1} label="Расходы" amount={stats.expense} change={-stats.expenseChange}

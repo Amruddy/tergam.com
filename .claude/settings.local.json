@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls c:/Users/Mi/Desktop/Проекты/dds-tracker/.env*)"
+    ]
+  }
+}
