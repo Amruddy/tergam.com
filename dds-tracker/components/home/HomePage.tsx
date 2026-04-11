@@ -55,13 +55,13 @@ function SummaryStrip() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.07 }}
-          className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl px-2 py-2.5 sm:px-3 sm:py-3 xl:px-4 xl:py-4 text-center"
+          className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl px-3 py-3 sm:px-3 sm:py-3 xl:px-4 xl:py-4 text-center"
         >
           <div className="w-7 h-7 xl:w-8 xl:h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style={{ background: `${color}18` }}>
             <Icon size={14} style={{ color }} />
           </div>
           <div className="text-xs text-slate-400 dark:text-gray-500 mb-0.5">{label}</div>
-          <div className="text-[11px] sm:text-sm xl:text-base font-bold text-slate-900 dark:text-white leading-tight break-words">
+          <div className="text-[13px] sm:text-sm xl:text-base font-bold text-slate-900 dark:text-white leading-tight break-words">
             {sign}{formatCurrency(Math.abs(value), settings.currency)}
           </div>
         </motion.div>
@@ -265,12 +265,12 @@ function HomeGoalCard() {
       animate={{ opacity: 1, y: 0 }}
       className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-0 overflow-hidden"
     >
-      <div className="p-3 sm:p-4 md:p-5" style={{ background: `${goal.color}08` }}>
+      <div className="p-3.5 sm:p-4 md:p-5" style={{ background: `${goal.color}08` }}>
         <div className="flex items-start justify-between gap-3 mb-2.5 sm:mb-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xl sm:text-2xl leading-none">{goal.emoji}</span>
-              <span className="text-[13px] sm:text-sm font-semibold text-slate-900 dark:text-white truncate">{goal.name}</span>
+              <span className="text-2xl leading-none">{goal.emoji}</span>
+              <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{goal.name}</span>
             </div>
             <div className="text-[11px] sm:text-xs text-slate-400 dark:text-gray-500 mt-1">
               {pct >= 100 ? 'Цель достигнута' : `${daysLeft} дн. до дедлайна`}
@@ -293,17 +293,17 @@ function HomeGoalCard() {
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-1.5 sm:py-2">
+          <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
             <div className="text-[11px] text-slate-400 dark:text-gray-500">Накоплено</div>
-            <div className="text-[11px] sm:text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.savedAmount, settings.currency)}</div>
+            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.savedAmount, settings.currency)}</div>
           </div>
-          <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-1.5 sm:py-2">
+          <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
             <div className="text-[11px] text-slate-400 dark:text-gray-500">Осталось</div>
-            <div className="text-[11px] sm:text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(remaining, settings.currency)}</div>
+            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(remaining, settings.currency)}</div>
           </div>
-          <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-1.5 sm:py-2">
+          <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
             <div className="text-[11px] text-slate-400 dark:text-gray-500">Цель</div>
-            <div className="text-[11px] sm:text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.targetAmount, settings.currency)}</div>
+            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.targetAmount, settings.currency)}</div>
           </div>
         </div>
       </div>

@@ -21,23 +21,23 @@ function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.4 }}
-      className={`relative min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 md:p-6 overflow-hidden transition-colors duration-300 ${glowClass}`}
+      className={`relative min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl px-3 py-3 md:p-6 overflow-hidden transition-colors duration-300 ${glowClass}`}
     >
       <div className="relative z-10">
-        <div className="flex items-start justify-between mb-3 md:mb-4">
-          <div className="w-9 h-9 md:w-11 md:h-11 rounded-xl flex items-center justify-center"
+        <div className="flex items-start justify-between mb-2 md:mb-4">
+          <div className="w-7 h-7 md:w-11 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center"
             style={{ background: `${color}20`, border: `1px solid ${color}30` }}>
-            <Icon size={18} style={{ color }} />
+            <Icon size={14} style={{ color }} />
           </div>
-          <div className={`flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 md:px-2 md:py-1 rounded-lg ${
+          <div className={`hidden md:flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 md:px-2 md:py-1 rounded-lg ${
             isPositiveChange ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'
           }`}>
             {isPositiveChange ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
             {Math.abs(change)}%
           </div>
         </div>
-        <div className="text-xs text-slate-500 dark:text-gray-500 mb-0.5">{label}</div>
-        <div className="text-base md:text-xl xl:text-2xl font-bold text-slate-900 dark:text-white leading-tight break-words">
+        <div className="text-[11px] md:text-xs text-slate-500 dark:text-gray-500 mb-0.5 leading-tight">{label}</div>
+        <div className="text-[13px] md:text-xl xl:text-2xl font-bold text-slate-900 dark:text-white leading-tight break-words">
           {formatCurrency(amount, settings.currency)}
         </div>
         <div className="text-xs text-slate-400 dark:text-gray-600 mt-1 hidden md:block">vs прошлый месяц</div>
@@ -72,7 +72,7 @@ export function StatsCards() {
   }, [accounts, transactions, transfers])
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+    <div className="grid grid-cols-3 gap-2 md:gap-4">
       <StatCard index={0} label="Доходы" amount={stats.income} change={stats.incomeChange}
         icon={TrendingUp} color="#22c55e" glowClass="glow-green" />
       <StatCard index={1} label="Расходы" amount={stats.expense} change={-stats.expenseChange}
