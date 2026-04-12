@@ -7,7 +7,7 @@ import {
   RecurringTransaction, Account, Transfer, UserProfile,
 } from '@/types'
 import { generateId, getDayKey, getMonthKey } from '@/lib/utils'
-import { DEFAULT_ACCOUNTS, getDefaultAccountId } from '@/lib/accounts'
+import { createDefaultAccounts, getDefaultAccountId, LEGACY_DEFAULT_ACCOUNT_IDS } from '@/lib/accounts'
 import {
   dbLoadAll,
   dbUpsertAccount, dbDeleteAccount,
@@ -40,6 +40,49 @@ function shouldApply(rec: RecurringTransaction, today: Date): boolean {
 
 const defaultProfile = (): UserProfile => ({ fullName: '', email: '', phone: '', city: '' })
 const defaultSettings = (): Settings => ({ currency: 'RUB', theme: 'light' })
+
+function remapLegacyDefaultAccountIds(
+  accountsInput: Account[],
+  transactionsInput: Transaction[],
+  transfersInput: Transfer[],
+  recurringInput: RecurringTransaction[],
+) {
+  const legacyIds = new Set<string>(LEGACY_DEFAULT_ACCOUNT_IDS)
+  const idMap = new Map<string, string>()
+
+  const accounts = accountsInput.map((account) => {
+    if (!legacyIds.has(account.id)) return { ...account, archived: account.archived ?? false }
+    const nextId = generateId()
+    idMap.set(account.id, nextId)
+    return { ...account, id: nextId, archived: account.archived ?? false }
+  })
+
+  if (idMap.size === 0) {
+    return {
+      accounts,
+      transactions: transactionsInput,
+      transfers: transfersInput,
+      recurring: recurringInput,
+    }
+  }
+
+  return {
+    accounts,
+    transactions: transactionsInput.map((tx) => ({
+      ...tx,
+      accountId: idMap.get(tx.accountId) ?? tx.accountId,
+    })),
+    transfers: transfersInput.map((transfer) => ({
+      ...transfer,
+      fromAccountId: idMap.get(transfer.fromAccountId) ?? transfer.fromAccountId,
+      toAccountId: idMap.get(transfer.toAccountId) ?? transfer.toAccountId,
+    })),
+    recurring: recurringInput.map((rec) => ({
+      ...rec,
+      accountId: idMap.get(rec.accountId) ?? rec.accountId,
+    })),
+  }
+}
 
 interface TransactionStore {
   accounts: Account[]
@@ -103,7 +146,7 @@ export const useTransactionStore = create<TransactionStore>()(
       }
 
       const resetState = () => ({
-        accounts: DEFAULT_ACCOUNTS,
+        accounts: createDefaultAccounts(),
         transactions: [],
         transfers: [],
         budgets: [],
@@ -117,7 +160,7 @@ export const useTransactionStore = create<TransactionStore>()(
       })
 
       return {
-        accounts: DEFAULT_ACCOUNTS,
+        accounts: createDefaultAccounts(),
         transactions: [],
         transfers: [],
         budgets: [],
@@ -323,7 +366,7 @@ export const useTransactionStore = create<TransactionStore>()(
 
             // Первый запуск: если в облаке нет счетов, сохраняем локальные дефолты.
             if (data.accounts.length === 0) {
-              const defaults = get().accounts.length > 0 ? get().accounts : DEFAULT_ACCOUNTS
+              const defaults = get().accounts.length > 0 ? get().accounts : createDefaultAccounts()
               await Promise.all(defaults.map((a) => dbUpsertAccount(a)))
               data.accounts = defaults
             }
@@ -355,24 +398,29 @@ export const useTransactionStore = create<TransactionStore>()(
     },
     {
       name: 'dds-tracker-store',
-      version: 4,
+      version: 5,
       migrate: (persistedState: any) => {
-        const accounts: Account[] = Array.isArray(persistedState?.accounts) && persistedState.accounts.length > 0
+        const baseAccounts: Account[] = Array.isArray(persistedState?.accounts) && persistedState.accounts.length > 0
           ? persistedState.accounts.map((a: any) => ({ ...a, archived: a.archived ?? false }))
-          : DEFAULT_ACCOUNTS
+          : createDefaultAccounts()
+        const baseTransactions: Transaction[] = Array.isArray(persistedState?.transactions) ? persistedState.transactions : []
+        const baseTransfers: Transfer[] = Array.isArray(persistedState?.transfers) ? persistedState.transfers : []
+        const baseRecurring: RecurringTransaction[] = Array.isArray(persistedState?.recurring) ? persistedState.recurring : []
+        const { accounts, transactions, transfers, recurring } = remapLegacyDefaultAccountIds(
+          baseAccounts,
+          baseTransactions,
+          baseTransfers,
+          baseRecurring,
+        )
         const fallbackId = accounts[0]?.id ?? getDefaultAccountId()
         return {
           ...persistedState,
           accounts,
           supabaseLoaded: false,
           syncError: null,
-          transfers: Array.isArray(persistedState?.transfers) ? persistedState.transfers : [],
-          transactions: Array.isArray(persistedState?.transactions)
-            ? persistedState.transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId }))
-            : [],
-          recurring: Array.isArray(persistedState?.recurring)
-            ? persistedState.recurring.map((rec: any) => ({ ...rec, accountId: rec.accountId || fallbackId }))
-            : [],
+          transfers,
+          transactions: transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId })),
+          recurring: recurring.map((rec: any) => ({ ...rec, accountId: rec.accountId || fallbackId })),
           profile: {
             fullName: persistedState?.profile?.fullName ?? '',
             email: persistedState?.profile?.email ?? '',
