@@ -17,6 +17,8 @@ import {
   dbUpsertGoal, dbDeleteGoal,
   dbUpsertRecurring, dbDeleteRecurring,
   dbUpsertSettings,
+  dbReplaceAccountReferences,
+  dbClearAllUserData,
 } from '@/lib/db'
 
 function shouldApply(rec: RecurringTransaction, today: Date): boolean {
@@ -36,6 +38,9 @@ function shouldApply(rec: RecurringTransaction, today: Date): boolean {
   return false
 }
 
+const defaultProfile = (): UserProfile => ({ fullName: '', email: '', phone: '', city: '' })
+const defaultSettings = (): Settings => ({ currency: 'RUB', theme: 'dark' })
+
 interface TransactionStore {
   accounts: Account[]
   transactions: Transaction[]
@@ -47,6 +52,7 @@ interface TransactionStore {
   settings: Settings
   initialized: boolean
   supabaseLoaded: boolean
+  syncError: string | null
 
   addTransaction: (t: Omit<Transaction, 'id' | 'createdAt'>) => void
   updateTransaction: (id: string, t: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => void
@@ -75,224 +81,278 @@ interface TransactionStore {
   updateSettings: (s: Partial<Settings>) => void
   updateProfile: (p: Partial<UserProfile>) => void
   resetAllData: () => void
+  clearAllData: () => Promise<boolean>
   bootstrap: () => void
   loadFromSupabase: () => Promise<void>
 }
 
 export const useTransactionStore = create<TransactionStore>()(
   persist(
-    (set, get) => ({
-      accounts: DEFAULT_ACCOUNTS,
-      transactions: [],
-      transfers: [],
-      budgets: [],
-      goals: [],
-      recurring: [],
-      profile: { fullName: '', email: '', phone: '', city: '' },
-      settings: { currency: 'RUB', theme: 'dark' },
-      initialized: false,
-      supabaseLoaded: false,
-
-      addTransaction: (t) => {
-        const newTx: Transaction = { ...t, id: generateId(), createdAt: new Date().toISOString() }
-        set((s) => ({ transactions: [newTx, ...s.transactions] }))
-        dbUpsertTransaction(newTx).catch(console.error)
-      },
-
-      updateTransaction: (id, updates) => {
-        set((s) => ({
-          transactions: s.transactions.map((t) => t.id === id ? { ...t, ...updates } : t),
-        }))
-        const updated = get().transactions.find((t) => t.id === id)
-        if (updated) dbUpsertTransaction(updated).catch(console.error)
-      },
-
-      deleteTransaction: (id) => {
-        set((s) => ({ transactions: s.transactions.filter((t) => t.id !== id) }))
-        dbDeleteTransaction(id).catch(console.error)
-      },
-
-      addTransfer: (t) => {
-        const newTransfer: Transfer = { ...t, id: generateId(), createdAt: new Date().toISOString() }
-        set((s) => ({ transfers: [newTransfer, ...s.transfers] }))
-        dbUpsertTransfer(newTransfer).catch(console.error)
-      },
-
-      deleteTransfer: (id) => {
-        set((s) => ({ transfers: s.transfers.filter((t) => t.id !== id) }))
-        dbDeleteTransfer(id).catch(console.error)
-      },
-
-      addBudget: (b) => {
-        const newBudget: Budget = { ...b, id: generateId(), createdAt: new Date().toISOString() }
-        set((s) => ({ budgets: [...s.budgets, newBudget] }))
-        dbUpsertBudget(newBudget).catch(console.error)
-      },
-
-      updateBudget: (id, updates) => {
-        set((s) => ({ budgets: s.budgets.map((b) => b.id === id ? { ...b, ...updates } : b) }))
-        const updated = get().budgets.find((b) => b.id === id)
-        if (updated) dbUpsertBudget(updated).catch(console.error)
-      },
-
-      deleteBudget: (id) => {
-        set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) }))
-        dbDeleteBudget(id).catch(console.error)
-      },
-
-      addGoal: (g) => {
-        const newGoal: Goal = { ...g, id: generateId(), createdAt: new Date().toISOString() }
-        set((s) => ({ goals: [...s.goals, newGoal] }))
-        dbUpsertGoal(newGoal).catch(console.error)
-      },
-
-      updateGoal: (id, updates) => {
-        set((s) => ({ goals: s.goals.map((g) => g.id === id ? { ...g, ...updates } : g) }))
-        const updated = get().goals.find((g) => g.id === id)
-        if (updated) dbUpsertGoal(updated).catch(console.error)
-      },
-
-      deleteGoal: (id) => {
-        set((s) => ({ goals: s.goals.filter((g) => g.id !== id) }))
-        dbDeleteGoal(id).catch(console.error)
-      },
-
-      addAccount: (a) => {
-        const newAccount: Account = { ...a, archived: a.archived ?? false, id: generateId(), createdAt: new Date().toISOString() }
-        set((s) => ({ accounts: [...s.accounts, newAccount] }))
-        dbUpsertAccount(newAccount).catch(console.error)
-      },
-
-      updateAccount: (id, updates) => {
-        set((s) => ({
-          accounts: s.accounts.map((a) => a.id === id ? { ...a, ...updates } : a),
-        }))
-        const updated = get().accounts.find((a) => a.id === id)
-        if (updated) dbUpsertAccount(updated).catch(console.error)
-      },
-
-      deleteAccount: (id) => {
-        set((s) => {
-          if (s.accounts.length <= 1) return s
-          const fallbackId = s.accounts.find((a) => a.id !== id)?.id ?? getDefaultAccountId()
-          return {
-            accounts: s.accounts.filter((a) => a.id !== id),
-            transactions: s.transactions.map((tx) => tx.accountId === id ? { ...tx, accountId: fallbackId } : tx),
-            recurring: s.recurring.map((rec) => rec.accountId === id ? { ...rec, accountId: fallbackId } : rec),
-            transfers: s.transfers.map((tr) => ({
-              ...tr,
-              fromAccountId: tr.fromAccountId === id ? fallbackId : tr.fromAccountId,
-              toAccountId: tr.toAccountId === id ? fallbackId : tr.toAccountId,
-            })),
-          }
-        })
-        dbDeleteAccount(id).catch(console.error)
-      },
-
-      addRecurring: (r) => {
-        const newRec: RecurringTransaction = { ...r, id: generateId(), lastApplied: null, createdAt: new Date().toISOString() }
-        set((s) => ({ recurring: [...s.recurring, newRec] }))
-        dbUpsertRecurring(newRec).catch(console.error)
-      },
-
-      updateRecurring: (id, updates) => {
-        set((s) => ({ recurring: s.recurring.map((r) => r.id === id ? { ...r, ...updates } : r) }))
-        const updated = get().recurring.find((r) => r.id === id)
-        if (updated) dbUpsertRecurring(updated).catch(console.error)
-      },
-
-      deleteRecurring: (id) => {
-        set((s) => ({ recurring: s.recurring.filter((r) => r.id !== id) }))
-        dbDeleteRecurring(id).catch(console.error)
-      },
-
-      applyRecurring: () => {
-        const { recurring, transactions } = get()
-        const today = new Date()
-        const todayKey = getDayKey(today)
-        const newTx: Transaction[] = []
-
-        const updatedRecurring = recurring.map((rec) => {
-          if (!shouldApply(rec, today)) return rec
-          const tx: Transaction = {
-            id: generateId(), type: rec.type, amount: rec.amount, category: rec.category,
-            accountId: rec.accountId, date: todayKey,
-            description: `${rec.description} (авто)`, tags: rec.tags,
-            createdAt: new Date().toISOString(),
-          }
-          newTx.push(tx)
-          return { ...rec, lastApplied: todayKey }
-        })
-
-        if (newTx.length > 0) {
-          set({ transactions: [...newTx, ...transactions], recurring: updatedRecurring })
-          newTx.forEach((tx) => dbUpsertTransaction(tx).catch(console.error))
-          updatedRecurring.forEach((rec, i) => {
-            if (rec !== recurring[i]) dbUpsertRecurring(rec).catch(console.error)
-          })
-        }
-      },
-
-      updateSettings: (s) => {
-        set((state) => ({ settings: { ...state.settings, ...s } }))
-        const { settings, profile } = get()
-        dbUpsertSettings(settings, profile).catch(console.error)
-      },
-
-      updateProfile: (p) => {
-        set((state) => ({ profile: { ...state.profile, ...p } }))
-        const { settings, profile } = get()
-        dbUpsertSettings(settings, profile).catch(console.error)
-      },
-
-      resetAllData: () => {
+    (set, get) => {
+      const handleSyncError = (error: unknown, fallback: string) => {
+        console.error('Supabase sync error:', error)
         set({
-          accounts: DEFAULT_ACCOUNTS,
-          transactions: [], transfers: [], budgets: [], goals: [], recurring: [],
-          profile: { fullName: '', email: '', phone: '', city: '' },
-          settings: { currency: 'RUB', theme: 'dark' },
-          initialized: true,
+          syncError: error instanceof Error ? error.message : fallback,
         })
-      },
+      }
 
-      loadFromSupabase: async () => {
-        try {
-          const data = await dbLoadAll()
-          if (!data) {
-            set({ supabaseLoaded: true })
-            return
-          }
+      const syncTask = (task: () => Promise<void>, fallback: string) => {
+        task()
+          .then(() => set({ syncError: null }))
+          .catch((error) => handleSyncError(error, fallback))
+      }
 
-          // Первый запуск: нет счетов в БД → вставляем дефолтные
-          if (data.accounts.length === 0) {
-            const defaults = get().accounts.length > 0 ? get().accounts : DEFAULT_ACCOUNTS
-            await Promise.all(defaults.map((a) => dbUpsertAccount(a)))
-            data.accounts = defaults
-          }
+      const resetState = () => ({
+        accounts: DEFAULT_ACCOUNTS,
+        transactions: [],
+        transfers: [],
+        budgets: [],
+        goals: [],
+        recurring: [],
+        profile: defaultProfile(),
+        settings: defaultSettings(),
+        initialized: true,
+        supabaseLoaded: true,
+        syncError: null,
+      })
 
-          set({
-            accounts: data.accounts,
-            transactions: data.transactions,
-            transfers: data.transfers,
-            budgets: data.budgets,
-            goals: data.goals,
-            recurring: data.recurring,
-            settings: data.settings ?? get().settings,
-            profile: data.profile ?? get().profile,
-            supabaseLoaded: true,
+      return {
+        accounts: DEFAULT_ACCOUNTS,
+        transactions: [],
+        transfers: [],
+        budgets: [],
+        goals: [],
+        recurring: [],
+        profile: defaultProfile(),
+        settings: defaultSettings(),
+        initialized: false,
+        supabaseLoaded: false,
+        syncError: null,
+
+        addTransaction: (t) => {
+          const newTx: Transaction = { ...t, id: generateId(), createdAt: new Date().toISOString() }
+          set((s) => ({ transactions: [newTx, ...s.transactions] }))
+          syncTask(() => dbUpsertTransaction(newTx), 'Не удалось сохранить транзакцию в облаке.')
+        },
+
+        updateTransaction: (id, updates) => {
+          set((s) => ({
+            transactions: s.transactions.map((t) => t.id === id ? { ...t, ...updates } : t),
+          }))
+          const updated = get().transactions.find((t) => t.id === id)
+          if (updated) syncTask(() => dbUpsertTransaction(updated), 'Не удалось обновить транзакцию в облаке.')
+        },
+
+        deleteTransaction: (id) => {
+          set((s) => ({ transactions: s.transactions.filter((t) => t.id !== id) }))
+          syncTask(() => dbDeleteTransaction(id), 'Не удалось удалить транзакцию из облака.')
+        },
+
+        addTransfer: (t) => {
+          const newTransfer: Transfer = { ...t, id: generateId(), createdAt: new Date().toISOString() }
+          set((s) => ({ transfers: [newTransfer, ...s.transfers] }))
+          syncTask(() => dbUpsertTransfer(newTransfer), 'Не удалось сохранить перевод в облаке.')
+        },
+
+        deleteTransfer: (id) => {
+          set((s) => ({ transfers: s.transfers.filter((t) => t.id !== id) }))
+          syncTask(() => dbDeleteTransfer(id), 'Не удалось удалить перевод из облака.')
+        },
+
+        addBudget: (b) => {
+          const newBudget: Budget = { ...b, id: generateId(), createdAt: new Date().toISOString() }
+          set((s) => ({ budgets: [...s.budgets, newBudget] }))
+          syncTask(() => dbUpsertBudget(newBudget), 'Не удалось сохранить бюджет в облаке.')
+        },
+
+        updateBudget: (id, updates) => {
+          set((s) => ({ budgets: s.budgets.map((b) => b.id === id ? { ...b, ...updates } : b) }))
+          const updated = get().budgets.find((b) => b.id === id)
+          if (updated) syncTask(() => dbUpsertBudget(updated), 'Не удалось обновить бюджет в облаке.')
+        },
+
+        deleteBudget: (id) => {
+          set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) }))
+          syncTask(() => dbDeleteBudget(id), 'Не удалось удалить бюджет из облака.')
+        },
+
+        addGoal: (g) => {
+          const newGoal: Goal = { ...g, id: generateId(), createdAt: new Date().toISOString() }
+          set((s) => ({ goals: [...s.goals, newGoal] }))
+          syncTask(() => dbUpsertGoal(newGoal), 'Не удалось сохранить цель в облаке.')
+        },
+
+        updateGoal: (id, updates) => {
+          set((s) => ({ goals: s.goals.map((g) => g.id === id ? { ...g, ...updates } : g) }))
+          const updated = get().goals.find((g) => g.id === id)
+          if (updated) syncTask(() => dbUpsertGoal(updated), 'Не удалось обновить цель в облаке.')
+        },
+
+        deleteGoal: (id) => {
+          set((s) => ({ goals: s.goals.filter((g) => g.id !== id) }))
+          syncTask(() => dbDeleteGoal(id), 'Не удалось удалить цель из облака.')
+        },
+
+        addAccount: (a) => {
+          const newAccount: Account = { ...a, archived: a.archived ?? false, id: generateId(), createdAt: new Date().toISOString() }
+          set((s) => ({ accounts: [...s.accounts, newAccount] }))
+          syncTask(() => dbUpsertAccount(newAccount), 'Не удалось сохранить счёт в облаке.')
+        },
+
+        updateAccount: (id, updates) => {
+          set((s) => ({
+            accounts: s.accounts.map((a) => a.id === id ? { ...a, ...updates } : a),
+          }))
+          const updated = get().accounts.find((a) => a.id === id)
+          if (updated) syncTask(() => dbUpsertAccount(updated), 'Не удалось обновить счёт в облаке.')
+        },
+
+        deleteAccount: (id) => {
+          const { accounts } = get()
+          if (accounts.length <= 1) return
+
+          const fallbackId = accounts.find((a) => a.id !== id)?.id ?? getDefaultAccountId()
+
+          set((s) => {
+            if (s.accounts.length <= 1) return s
+            return {
+              accounts: s.accounts.filter((a) => a.id !== id),
+              transactions: s.transactions.map((tx) => tx.accountId === id ? { ...tx, accountId: fallbackId } : tx),
+              recurring: s.recurring.map((rec) => rec.accountId === id ? { ...rec, accountId: fallbackId } : rec),
+              transfers: s.transfers.map((tr) => ({
+                ...tr,
+                fromAccountId: tr.fromAccountId === id ? fallbackId : tr.fromAccountId,
+                toAccountId: tr.toAccountId === id ? fallbackId : tr.toAccountId,
+              })),
+            }
           })
-        } catch (e) {
-          console.error('Supabase sync error:', e)
-          set({ supabaseLoaded: true })
-        }
-      },
 
-      bootstrap: () => {
-        const { initialized } = get()
-        if (!initialized) set({ initialized: true })
-        get().loadFromSupabase()
-      },
-    }),
+          syncTask(async () => {
+            await dbReplaceAccountReferences(id, fallbackId)
+            await dbDeleteAccount(id)
+          }, 'Не удалось корректно удалить счёт в облаке.')
+        },
+
+        addRecurring: (r) => {
+          const newRec: RecurringTransaction = { ...r, id: generateId(), lastApplied: null, createdAt: new Date().toISOString() }
+          set((s) => ({ recurring: [...s.recurring, newRec] }))
+          syncTask(() => dbUpsertRecurring(newRec), 'Не удалось сохранить автоплатёж в облаке.')
+        },
+
+        updateRecurring: (id, updates) => {
+          set((s) => ({ recurring: s.recurring.map((r) => r.id === id ? { ...r, ...updates } : r) }))
+          const updated = get().recurring.find((r) => r.id === id)
+          if (updated) syncTask(() => dbUpsertRecurring(updated), 'Не удалось обновить автоплатёж в облаке.')
+        },
+
+        deleteRecurring: (id) => {
+          set((s) => ({ recurring: s.recurring.filter((r) => r.id !== id) }))
+          syncTask(() => dbDeleteRecurring(id), 'Не удалось удалить автоплатёж из облака.')
+        },
+
+        applyRecurring: () => {
+          const { recurring, transactions } = get()
+          const today = new Date()
+          const todayKey = getDayKey(today)
+          const newTx: Transaction[] = []
+
+          const updatedRecurring = recurring.map((rec) => {
+            if (!shouldApply(rec, today)) return rec
+            const tx: Transaction = {
+              id: generateId(),
+              type: rec.type,
+              amount: rec.amount,
+              category: rec.category,
+              accountId: rec.accountId,
+              date: todayKey,
+              description: `${rec.description} (авто)`,
+              tags: rec.tags,
+              createdAt: new Date().toISOString(),
+            }
+            newTx.push(tx)
+            return { ...rec, lastApplied: todayKey }
+          })
+
+          if (newTx.length > 0) {
+            set({ transactions: [...newTx, ...transactions], recurring: updatedRecurring })
+            syncTask(async () => {
+              await Promise.all([
+                ...newTx.map((tx) => dbUpsertTransaction(tx)),
+                ...updatedRecurring
+                  .filter((rec, index) => rec !== recurring[index])
+                  .map((rec) => dbUpsertRecurring(rec)),
+              ])
+            }, 'Не удалось синхронизировать автоплатежи.')
+          }
+        },
+
+        updateSettings: (s) => {
+          set((state) => ({ settings: { ...state.settings, ...s } }))
+          const { settings, profile } = get()
+          syncTask(() => dbUpsertSettings(settings, profile), 'Не удалось сохранить настройки в облаке.')
+        },
+
+        updateProfile: (p) => {
+          set((state) => ({ profile: { ...state.profile, ...p } }))
+          const { settings, profile } = get()
+          syncTask(() => dbUpsertSettings(settings, profile), 'Не удалось сохранить профиль в облаке.')
+        },
+
+        resetAllData: () => {
+          set(resetState())
+        },
+
+        clearAllData: async () => {
+          try {
+            await dbClearAllUserData()
+            set(resetState())
+            return true
+          } catch (error) {
+            handleSyncError(error, 'Не удалось очистить данные в облаке.')
+            return false
+          }
+        },
+
+        loadFromSupabase: async () => {
+          try {
+            const data = await dbLoadAll()
+            if (!data) {
+              set({ supabaseLoaded: true, syncError: null })
+              return
+            }
+
+            // Первый запуск: если в облаке нет счетов, сохраняем локальные дефолты.
+            if (data.accounts.length === 0) {
+              const defaults = get().accounts.length > 0 ? get().accounts : DEFAULT_ACCOUNTS
+              await Promise.all(defaults.map((a) => dbUpsertAccount(a)))
+              data.accounts = defaults
+            }
+
+            set({
+              accounts: data.accounts,
+              transactions: data.transactions,
+              transfers: data.transfers,
+              budgets: data.budgets,
+              goals: data.goals,
+              recurring: data.recurring,
+              settings: data.settings ?? get().settings,
+              profile: data.profile ?? get().profile,
+              supabaseLoaded: true,
+              syncError: null,
+            })
+          } catch (error) {
+            handleSyncError(error, 'Не удалось загрузить данные из облака.')
+            set({ supabaseLoaded: true })
+          }
+        },
+
+        bootstrap: () => {
+          const { initialized } = get()
+          if (!initialized) set({ initialized: true })
+          get().loadFromSupabase()
+        },
+      }
+    },
     {
       name: 'dds-tracker-store',
       version: 4,
@@ -305,6 +365,7 @@ export const useTransactionStore = create<TransactionStore>()(
           ...persistedState,
           accounts,
           supabaseLoaded: false,
+          syncError: null,
           transfers: Array.isArray(persistedState?.transfers) ? persistedState.transfers : [],
           transactions: Array.isArray(persistedState?.transactions)
             ? persistedState.transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId }))

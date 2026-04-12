@@ -20,7 +20,7 @@ export function UserProfileModal({
   authEmail?: string
   onAuthSuccess?: () => void
 }) {
-  const { profile, updateProfile, resetAllData } = useTransactionStore()
+  const { profile, updateProfile, resetAllData, clearAllData, syncError } = useTransactionStore()
   const [fullName, setFullName] = useState(profile.fullName)
   const [email, setEmail] = useState(profile.email)
   const [phone, setPhone] = useState(profile.phone)
@@ -31,6 +31,7 @@ export function UserProfileModal({
   const [authPassword, setAuthPassword] = useState('')
   const [authPasswordConfirm, setAuthPasswordConfirm] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
+  const [clearLoading, setClearLoading] = useState(false)
   const [authError, setAuthError] = useState('')
   const [authMessage, setAuthMessage] = useState('')
 
@@ -54,8 +55,11 @@ export function UserProfileModal({
     onClose?.()
   }
 
-  const handleReset = () => {
-    resetAllData()
+  const handleReset = async () => {
+    setClearLoading(true)
+    const cleared = await clearAllData()
+    setClearLoading(false)
+    if (!cleared) return
     setConfirmReset(false)
     onClose?.()
   }
@@ -160,6 +164,7 @@ export function UserProfileModal({
 
             {authError && <div className="text-xs text-red-500">{authError}</div>}
             {authMessage && <div className="text-xs text-green-600 dark:text-green-400">{authMessage}</div>}
+            {syncError && <div className="text-xs text-red-500">{syncError}</div>}
 
             <Btn type="submit" variant="primary" className="w-full" disabled={authLoading || !authFormEmail.trim() || !authPassword}>
               {authLoading ? 'Подождите...' : authMode === 'login' ? 'Войти' : 'Создать аккаунт'}
@@ -201,17 +206,17 @@ export function UserProfileModal({
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-white">Очистить все данные</div>
                   <div className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
-                    Удалит локальные транзакции, счета, переводы, бюджеты, цели, автоплатежи и профиль.
+                    Удалит локальные и облачные транзакции, счета, переводы, бюджеты, цели, автоплатежи и профиль.
                   </div>
                 </div>
               </div>
 
               {confirmReset ? (
                 <div className="flex gap-2">
-                  <Btn type="button" variant="danger" className="flex-1" onClick={handleReset}>
-                    Подтвердить очистку
+                  <Btn type="button" variant="danger" className="flex-1" onClick={handleReset} disabled={clearLoading}>
+                    {clearLoading ? 'Удаление...' : 'Подтвердить очистку'}
                   </Btn>
-                  <Btn type="button" variant="secondary" className="flex-1" onClick={() => setConfirmReset(false)}>
+                  <Btn type="button" variant="secondary" className="flex-1" onClick={() => setConfirmReset(false)} disabled={clearLoading}>
                     Отмена
                   </Btn>
                 </div>
