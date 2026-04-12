@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getSupabase } from './supabase'
 import { Account, Transaction, Transfer, Budget, Goal, RecurringTransaction, Settings, UserProfile } from '@/types'
 
 function toErrorMessage(error: unknown, fallback: string) {
@@ -55,6 +55,7 @@ function createSettingsInsertError(error: unknown) {
 }
 
 async function getUserId() {
+  const supabase = getSupabase()
   const { data, error } = await supabase.auth.getUser()
   if (error) {
     throw createDbError('Supabase auth', error)
@@ -135,6 +136,7 @@ const fromRecurring = (r: RecurringTransaction) => ({
 export async function dbLoadAll() {
   const userId = await getUserId()
   if (!userId) return null
+  const supabase = getSupabase()
 
   const [accountsData, transactionsData, transfersData, budgetsData, goalsData, recurringData, settingsData] = await Promise.all([
     unwrapQuery('Load accounts', supabase.from('accounts').select('*').eq('user_id', userId).order('created_at')),
@@ -143,7 +145,7 @@ export async function dbLoadAll() {
     unwrapQuery('Load budgets', supabase.from('budgets').select('*').eq('user_id', userId).order('created_at')),
     unwrapQuery('Load goals', supabase.from('goals').select('*').eq('user_id', userId).order('created_at')),
     unwrapQuery('Load recurring', supabase.from('recurring').select('*').eq('user_id', userId).order('created_at')),
-    unwrapQuery('Load settings', supabase.from('settings').select('*').eq('user_id', userId).maybeSingle()),
+    unwrapQuery<any | null>('Load settings', supabase.from('settings').select('*').eq('user_id', userId).maybeSingle()),
   ])
 
   return {
@@ -166,78 +168,91 @@ export async function dbLoadAll() {
 export const dbUpsertAccount = async (a: Account) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Upsert account', supabase.from('accounts').upsert({ ...fromAccount(a), user_id: userId }))
 }
 
 export const dbDeleteAccount = async (id: string) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Delete account', supabase.from('accounts').delete().eq('id', id).eq('user_id', userId))
 }
 
 export const dbUpsertTransaction = async (t: Transaction) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Upsert transaction', supabase.from('transactions').upsert({ ...fromTransaction(t), user_id: userId }))
 }
 
 export const dbDeleteTransaction = async (id: string) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Delete transaction', supabase.from('transactions').delete().eq('id', id).eq('user_id', userId))
 }
 
 export const dbUpsertTransfer = async (t: Transfer) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Upsert transfer', supabase.from('transfers').upsert({ ...fromTransfer(t), user_id: userId }))
 }
 
 export const dbDeleteTransfer = async (id: string) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Delete transfer', supabase.from('transfers').delete().eq('id', id).eq('user_id', userId))
 }
 
 export const dbUpsertBudget = async (b: Budget) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Upsert budget', supabase.from('budgets').upsert({ ...fromBudget(b), user_id: userId }))
 }
 
 export const dbDeleteBudget = async (id: string) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Delete budget', supabase.from('budgets').delete().eq('id', id).eq('user_id', userId))
 }
 
 export const dbUpsertGoal = async (g: Goal) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Upsert goal', supabase.from('goals').upsert({ ...fromGoal(g), user_id: userId }))
 }
 
 export const dbDeleteGoal = async (id: string) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Delete goal', supabase.from('goals').delete().eq('id', id).eq('user_id', userId))
 }
 
 export const dbUpsertRecurring = async (r: RecurringTransaction) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Upsert recurring', supabase.from('recurring').upsert({ ...fromRecurring(r), user_id: userId }))
 }
 
 export const dbDeleteRecurring = async (id: string) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
   await ensureMutation('Delete recurring', supabase.from('recurring').delete().eq('id', id).eq('user_id', userId))
 }
 
 export const dbUpsertSettings = async (settings: Settings, profile: UserProfile) => {
   const userId = await getUserId()
   if (!userId) return
+  const supabase = getSupabase()
 
   const payload = {
     user_id: userId,
@@ -305,6 +320,7 @@ export const dbUpsertSettings = async (settings: Settings, profile: UserProfile)
 export const dbReplaceAccountReferences = async (fromAccountId: string, toAccountId: string) => {
   const userId = await getUserId()
   if (!userId || fromAccountId === toAccountId) return
+  const supabase = getSupabase()
 
   await Promise.all([
     ensureMutation(
@@ -329,6 +345,7 @@ export const dbReplaceAccountReferences = async (fromAccountId: string, toAccoun
 export const dbClearAllUserData = async () => {
   const userId = await getUserId()
   if (!userId) return false
+  const supabase = getSupabase()
 
   await Promise.all([
     ensureMutation('Delete transactions', supabase.from('transactions').delete().eq('user_id', userId)),

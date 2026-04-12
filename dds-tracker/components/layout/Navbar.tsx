@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { Logo } from '@/components/Logo'
 import { UserProfileModal } from '@/components/UserProfileModal'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { getAuthUser } from '@/lib/auth'
 
 const NAV_ITEMS = [
@@ -30,6 +30,7 @@ export function Navbar() {
 
   useEffect(() => {
     bootstrap()
+    const supabase = getSupabase()
 
     let active = true
 
