@@ -39,7 +39,7 @@ function shouldApply(rec: RecurringTransaction, today: Date): boolean {
 }
 
 const defaultProfile = (): UserProfile => ({ fullName: '', email: '', phone: '', city: '' })
-const defaultSettings = (): Settings => ({ currency: 'RUB', theme: 'dark' })
+const defaultSettings = (): Settings => ({ currency: 'RUB', theme: 'light' })
 
 interface TransactionStore {
   accounts: Account[]
@@ -381,7 +381,7 @@ export const useTransactionStore = create<TransactionStore>()(
           },
           settings: {
             currency: persistedState?.settings?.currency ?? 'RUB',
-            theme: persistedState?.settings?.theme ?? 'dark',
+            theme: persistedState?.settings?.theme ?? 'light',
           },
         }
       },

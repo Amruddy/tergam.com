@@ -71,7 +71,7 @@ export function QuickTools() {
       {tools.map(({ href, icon: Icon, label, color, value, warn, sub }, i) => (
         <motion.div key={href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
           <Link href={href} className="group block bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3.5 sm:p-4 hover:border-slate-300 dark:hover:border-white/10 transition-all hover:shadow-md min-h-[120px] sm:min-h-0">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}15` }}>
                   <Icon size={15} style={{ color }} />
@@ -85,7 +85,7 @@ export function QuickTools() {
                   <p className="text-[11px] sm:text-[11px] text-slate-400 dark:text-gray-600 mt-0.5 line-clamp-2 sm:truncate">{sub}</p>
                 </div>
               </div>
-              <ChevronRight size={13} className="text-slate-300 dark:text-gray-600 group-hover:text-slate-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0 mt-0.5 sm:mt-1" />
+              <ChevronRight size={13} className="text-slate-300 dark:text-gray-600 group-hover:text-slate-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0" />
             </div>
           </Link>
         </motion.div>

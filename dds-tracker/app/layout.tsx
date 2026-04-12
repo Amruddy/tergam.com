@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`dark ${montserrat.variable}`}>
+    <html lang="ru" className={montserrat.variable}>
       <body className="font-sans bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white min-h-screen transition-colors duration-300">
         <AppShell>{children}</AppShell>
       </body>

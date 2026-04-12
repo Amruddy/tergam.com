@@ -24,6 +24,36 @@ async function ensureMutation(scope: string, query: PromiseLike<{ error: unknown
   if (error) throw createDbError(scope, error)
 }
 
+function isDuplicateConstraintError(error: unknown, constraint?: string) {
+  if (!error || typeof error !== 'object') return false
+
+  const details = error as { code?: unknown; message?: unknown; details?: unknown }
+  const code = typeof details.code === 'string' ? details.code : ''
+  const message = typeof details.message === 'string' ? details.message : ''
+  const extra = typeof details.details === 'string' ? details.details : ''
+  const haystack = `${message} ${extra}`
+
+  if (code === '23505') {
+    return constraint ? haystack.includes(constraint) : true
+  }
+
+  return constraint ? haystack.includes(constraint) : haystack.includes('duplicate key value violates unique constraint')
+}
+
+function generateFallbackIntegerId() {
+  return Math.floor(Math.random() * 2_000_000_000) + 1
+}
+
+function createSettingsInsertError(error: unknown) {
+  if (isDuplicateConstraintError(error, 'settings_pkey')) {
+    return new Error(
+      'Insert settings: duplicate key on settings_pkey. Most likely public.settings.id uses an out-of-sync integer sequence in Supabase. Fix the sequence in SQL and retry.'
+    )
+  }
+
+  return createDbError('Insert settings', error)
+}
+
 async function getUserId() {
   const { data, error } = await supabase.auth.getUser()
   if (error) {
@@ -208,7 +238,8 @@ export const dbDeleteRecurring = async (id: string) => {
 export const dbUpsertSettings = async (settings: Settings, profile: UserProfile) => {
   const userId = await getUserId()
   if (!userId) return
-  await ensureMutation('Upsert settings', supabase.from('settings').upsert({
+
+  const payload = {
     user_id: userId,
     currency: settings.currency,
     theme: settings.theme,
@@ -216,7 +247,59 @@ export const dbUpsertSettings = async (settings: Settings, profile: UserProfile)
     email: profile.email,
     phone: profile.phone,
     city: profile.city,
-  }, { onConflict: 'user_id' }))
+  }
+
+  const loadExisting = () => supabase.from('settings').select('id, user_id').eq('user_id', userId).maybeSingle()
+  const updateExisting = async (existing: { id?: string | null; user_id?: string | null }) => {
+    const pkCol = existing.id ? 'id' : 'user_id'
+    const pkVal = existing.id || userId
+    await ensureMutation('Update settings', supabase.from('settings').update(payload).eq(pkCol, pkVal))
+  }
+
+  const { data: existing, error: existingError } = await loadExisting()
+  if (existingError) throw createDbError('Load settings for upsert', existingError)
+
+  if (existing) {
+    await updateExisting(existing)
+    return
+  }
+
+  const { error: insertError } = await supabase.from('settings').insert(payload)
+  if (!insertError) return
+
+  if (isDuplicateConstraintError(insertError, 'settings_user_id_idx')) {
+    const { data: createdByRace, error: raceLoadError } = await loadExisting()
+    if (raceLoadError) throw createDbError('Reload settings after duplicate user_id', raceLoadError)
+    if (createdByRace) {
+      await updateExisting(createdByRace)
+      return
+    }
+  }
+
+  if (isDuplicateConstraintError(insertError, 'settings_pkey')) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const payloadWithId = { id: generateFallbackIntegerId(), ...payload }
+      const { error: retryError } = await supabase.from('settings').insert(payloadWithId)
+      if (!retryError) return
+
+      if (isDuplicateConstraintError(retryError, 'settings_user_id_idx')) {
+        const { data: createdByRace, error: raceLoadError } = await loadExisting()
+        if (raceLoadError) throw createDbError('Reload settings after duplicate primary key', raceLoadError)
+        if (createdByRace) {
+          await updateExisting(createdByRace)
+          return
+        }
+      }
+
+      if (!isDuplicateConstraintError(retryError, 'settings_pkey')) {
+        throw createDbError('Insert settings', retryError)
+      }
+    }
+
+    throw createSettingsInsertError(insertError)
+  }
+
+  throw createSettingsInsertError(insertError)
 }
 
 export const dbReplaceAccountReferences = async (fromAccountId: string, toAccountId: string) => {
