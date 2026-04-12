@@ -102,7 +102,7 @@ export function Navbar() {
               {profile.fullName || 'Профиль'}
             </div>
             <div className="text-[11px] text-slate-400 dark:text-gray-500 truncate max-w-[220px]">
-              {authUser?.email || profile.city || profile.email || 'Локальный пользователь'}
+              {authUser ? 'Аккаунт подключен' : 'Локальный пользователь'}
             </div>
           </div>
 

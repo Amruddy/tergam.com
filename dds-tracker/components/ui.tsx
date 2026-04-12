@@ -113,9 +113,9 @@ export function FormCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.18 }}
-      className="bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl overflow-hidden transition-colors duration-300"
+      className="bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl overflow-hidden transition-colors duration-300 max-h-[min(88vh,760px)] flex flex-col"
     >
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
+      <div className="flex items-center justify-between px-4 md:px-5 py-3 border-b border-slate-100 dark:border-white/[0.05]">
         <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{title}</h3>
         <button
           onClick={onClose}
@@ -124,7 +124,7 @@ export function FormCard({
           <X size={14} />
         </button>
       </div>
-      <div className="p-5 space-y-4">{children}</div>
+      <div className="p-4 md:p-5 space-y-4 overflow-y-auto">{children}</div>
     </motion.div>
   )
 }
