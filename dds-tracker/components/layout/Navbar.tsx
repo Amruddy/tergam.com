@@ -39,6 +39,12 @@ export function Navbar() {
       setAuthUser(user)
     })
 
+    if (!supabase) {
+      return () => {
+        active = false
+      }
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
