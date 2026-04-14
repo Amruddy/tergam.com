@@ -246,7 +246,7 @@ export function CategoryGrid({
           )}
           style={value === cat.id ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
         >
-          <span className="text-xl leading-none">{cat.emoji}</span>
+          <span className="text-[16px] sm:text-lg leading-none">{cat.emoji}</span>
           <span className={cn('text-[9px] text-center leading-tight font-medium', value === cat.id ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-gray-600')}>
             {cat.name}
           </span>
@@ -280,7 +280,7 @@ export function AccountSelect({
           )}
           style={value === account.id ? { borderColor: account.color, background: `${account.color}12` } : {}}
         >
-          <span className="text-lg leading-none">{account.emoji}</span>
+          <span className="text-[15px] sm:text-base leading-none">{account.emoji}</span>
           <span className="min-w-0">
             <span className={cn('block text-xs font-semibold truncate', value === account.id ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-gray-300')}>
               {account.name}

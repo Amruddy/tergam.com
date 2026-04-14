@@ -211,7 +211,7 @@ function QuickTextBar() {
             exit={{ opacity: 0, height: 0 }}
             className="mt-1 flex flex-wrap items-center gap-1 text-[12px] sm:text-xs text-slate-500 dark:text-gray-400"
           >
-            <span className="text-[13px] sm:text-sm leading-none">{cat.emoji}</span>
+            <span className="text-[12px] sm:text-[13px] leading-none">{cat.emoji}</span>
             <span>{cat.name}</span>
             <span>•</span>
             <span className={preview.type === 'income' ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'}>
@@ -269,7 +269,7 @@ function HomeGoalCard() {
         <div className="flex items-start justify-between gap-3 mb-2.5 sm:mb-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xl sm:text-2xl leading-none">{goal.emoji}</span>
+              <span className="text-[18px] sm:text-xl leading-none">{goal.emoji}</span>
               <span className="text-[15px] sm:text-sm font-semibold text-slate-900 dark:text-white truncate">{goal.name}</span>
             </div>
             <div className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-500 mt-1">
@@ -409,7 +409,7 @@ function QuickAddForm() {
               )}
               style={category === cat.id ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
             >
-              <span className="text-[17px] sm:text-xl leading-none">{cat.emoji}</span>
+              <span className="text-[14px] sm:text-[16px] leading-none">{cat.emoji}</span>
               <span className={cn('text-[10px] sm:text-[9px] text-center leading-tight font-medium', category === cat.id ? 'text-slate-900 dark:text-white' : '')}>
                 {cat.name}
               </span>

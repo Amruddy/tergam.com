@@ -52,7 +52,7 @@ function SwipeRow({ tx, onEdit, onDelete }: { tx: Transaction; onEdit: () => voi
         onDragEnd={handleDragEnd}
         className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-[#13131a] relative z-[1] cursor-grab active:cursor-grabbing hover:bg-slate-50 dark:hover:bg-white/2 transition-colors"
       >
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: `${cat.color}15` }}>{cat.emoji}</div>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[13px] flex-shrink-0" style={{ background: `${cat.color}15` }}>{cat.emoji}</div>
         <div className="flex-1 min-w-0">
           <div className="text-[15px] sm:text-sm text-slate-900 dark:text-white font-medium truncate">{tx.description || cat.name}</div>
           <div className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -86,13 +86,13 @@ function TableRow({ tx, onEdit, onDelete }: { tx: Transaction; onEdit: () => voi
     <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }} className="border-b border-slate-50 dark:border-[#1e1e2e]/50 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors group">
       <td className="px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm" style={{ background: `${cat.color}15` }}>{cat.emoji}</div>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px]" style={{ background: `${cat.color}15` }}>{cat.emoji}</div>
           <span className="text-xs text-slate-500 dark:text-gray-400">{cat.name}</span>
         </div>
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm">{account.emoji}</span>
+          <span className="text-[13px]">{account.emoji}</span>
           <span className="text-xs text-slate-500 dark:text-gray-400">{account.name}</span>
         </div>
       </td>
