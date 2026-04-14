@@ -44,7 +44,7 @@ function SummaryStrip() {
   }, [accounts, transactions, transfers])
 
   return (
-    <div className="grid grid-cols-3 gap-2 xl:gap-3">
+    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 xl:gap-3">
       {[
         { label: 'Доходы', value: stats.income, icon: TrendingUp, color: '#22c55e', sign: '+' },
         { label: 'Расходы', value: stats.expense, icon: TrendingDown, color: '#ef4444', sign: '−' },
@@ -55,13 +55,13 @@ function SummaryStrip() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.07 }}
-          className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3 md:p-5 text-center flex flex-col justify-center"
+          className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl px-2.5 py-3 sm:p-3 md:p-5 text-center flex flex-col justify-center"
         >
-          <div className="w-7 h-7 xl:w-8 xl:h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style={{ background: `${color}18` }}>
+          <div className="w-6 h-6 sm:w-7 sm:h-7 xl:w-8 xl:h-8 rounded-lg mx-auto mb-1.5 sm:mb-2 flex items-center justify-center" style={{ background: `${color}18` }}>
             <Icon size={14} style={{ color }} />
           </div>
-          <div className="text-xs text-slate-400 dark:text-gray-500 mb-0.5">{label}</div>
-          <div className="text-[13px] sm:text-sm xl:text-base font-bold text-slate-900 dark:text-white leading-tight break-words">
+          <div className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-0.5 leading-tight">{label}</div>
+          <div className="text-[15px] sm:text-sm xl:text-base font-bold text-slate-900 dark:text-white leading-tight break-words">
             {sign}{formatCurrency(Math.abs(value), settings.currency)}
           </div>
         </motion.div>
@@ -152,8 +152,8 @@ function QuickTextBar() {
     <div className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3 md:p-5">
       <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5">
         <Zap size={14} className="text-amber-500 flex-shrink-0" />
-        <span className="text-xs font-semibold text-slate-700 dark:text-gray-300">Быстрый ввод</span>
-        <span className="text-[11px] sm:text-xs text-slate-400 dark:text-gray-600 pt-0.5">напишите текстом</span>
+        <span className="text-[13px] sm:text-xs font-semibold text-slate-700 dark:text-gray-300">Быстрый ввод</span>
+        <span className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-600 pt-0.5">напишите текстом</span>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -162,7 +162,7 @@ function QuickTextBar() {
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           placeholder="кофе 250, зарплата +50000, такси 400..."
-          className="flex-1 min-w-0 h-9 sm:h-10 bg-slate-50 dark:bg-[#0d0d14] border border-slate-200 dark:border-white/8 rounded-xl px-3 text-sm text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400/60"
+          className="flex-1 min-w-0 h-10 sm:h-10 bg-slate-50 dark:bg-[#0d0d14] border border-slate-200 dark:border-white/8 rounded-xl px-3 text-[15px] sm:text-sm text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400/60"
         />
         <div className="flex items-center gap-2 flex-shrink-0">
           {voiceSupported && (
@@ -209,9 +209,9 @@ function QuickTextBar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-1 flex flex-wrap items-center gap-1 text-[10px] sm:text-xs text-slate-500 dark:text-gray-400"
+            className="mt-1 flex flex-wrap items-center gap-1 text-[12px] sm:text-xs text-slate-500 dark:text-gray-400"
           >
-            <span>{cat.emoji}</span>
+            <span className="text-[13px] sm:text-sm leading-none">{cat.emoji}</span>
             <span>{cat.name}</span>
             <span>•</span>
             <span className={preview.type === 'income' ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'}>
@@ -222,7 +222,7 @@ function QuickTextBar() {
         )}
       </AnimatePresence>
       {voiceSupported && (
-        <p className="mt-1 text-[10px] text-slate-400 dark:text-gray-500">
+        <p className="mt-1 text-[11px] sm:text-[10px] text-slate-400 dark:text-gray-500">
           {isListening ? 'Слушаю. Говорите короткой фразой.' : 'Можно продиктовать фразу голосом.'}
         </p>
       )}
@@ -269,16 +269,16 @@ function HomeGoalCard() {
         <div className="flex items-start justify-between gap-3 mb-2.5 sm:mb-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-2xl leading-none">{goal.emoji}</span>
-              <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{goal.name}</span>
+              <span className="text-xl sm:text-2xl leading-none">{goal.emoji}</span>
+              <span className="text-[15px] sm:text-sm font-semibold text-slate-900 dark:text-white truncate">{goal.name}</span>
             </div>
-            <div className="text-[11px] sm:text-xs text-slate-400 dark:text-gray-500 mt-1">
+            <div className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-500 mt-1">
               {pct >= 100 ? 'Цель достигнута' : `${daysLeft} дн. до дедлайна`}
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <div className="text-[11px] sm:text-xs text-slate-400 dark:text-gray-500">Прогресс</div>
-            <div className="text-[13px] sm:text-sm font-bold" style={{ color: goal.color }}>{Math.round(pct)}%</div>
+            <div className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-500">Прогресс</div>
+            <div className="text-[15px] sm:text-sm font-bold" style={{ color: goal.color }}>{Math.round(pct)}%</div>
           </div>
         </div>
 
@@ -294,16 +294,16 @@ function HomeGoalCard() {
 
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
-            <div className="text-[11px] text-slate-400 dark:text-gray-500">Накоплено</div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.savedAmount, settings.currency)}</div>
+            <div className="text-[12px] text-slate-400 dark:text-gray-500">Накоплено</div>
+            <div className="text-[15px] sm:text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.savedAmount, settings.currency)}</div>
           </div>
           <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
-            <div className="text-[11px] text-slate-400 dark:text-gray-500">Осталось</div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(remaining, settings.currency)}</div>
+            <div className="text-[12px] text-slate-400 dark:text-gray-500">Осталось</div>
+            <div className="text-[15px] sm:text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(remaining, settings.currency)}</div>
           </div>
           <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
-            <div className="text-[11px] text-slate-400 dark:text-gray-500">Цель</div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.targetAmount, settings.currency)}</div>
+            <div className="text-[12px] text-slate-400 dark:text-gray-500">Цель</div>
+            <div className="text-[15px] sm:text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.targetAmount, settings.currency)}</div>
           </div>
         </div>
       </div>
@@ -394,7 +394,7 @@ function QuickAddForm() {
       </div>
 
       <div>
-        <p className="text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Категория</p>
+        <p className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Категория</p>
         <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
           {availableCategories.map((cat) => (
             <button
@@ -409,8 +409,8 @@ function QuickAddForm() {
               )}
               style={category === cat.id ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
             >
-              <span className="text-xl leading-none">{cat.emoji}</span>
-              <span className={cn('text-[9px] text-center leading-tight font-medium', category === cat.id ? 'text-slate-900 dark:text-white' : '')}>
+              <span className="text-[17px] sm:text-xl leading-none">{cat.emoji}</span>
+              <span className={cn('text-[10px] sm:text-[9px] text-center leading-tight font-medium', category === cat.id ? 'text-slate-900 dark:text-white' : '')}>
                 {cat.name}
               </span>
             </button>
@@ -421,14 +421,14 @@ function QuickAddForm() {
       <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className={cn(inputBase, 'py-2.5 sm:py-3')} />
 
       <div>
-        <p className="text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Счёт</p>
+        <p className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Счёт</p>
         <AccountSelect accounts={activeAccounts} value={accountId} onChange={setAccountId} />
       </div>
 
       <button
         type="button"
         onClick={() => setShowExtra((v) => !v)}
-        className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-gray-500 hover:text-slate-700 dark:hover:text-gray-300 transition-colors w-full"
+        className="flex items-center gap-1.5 text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 hover:text-slate-700 dark:hover:text-gray-300 transition-colors w-full"
       >
         {showExtra ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         {showExtra ? 'Скрыть' : 'Описание и теги'}
@@ -447,7 +447,7 @@ function QuickAddForm() {
             <div>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {tags.map((tag) => (
-                  <span key={tag} className="flex items-center gap-1 bg-indigo-500/12 border border-indigo-500/25 text-indigo-600 dark:text-indigo-300 text-xs px-2 py-0.5 rounded-lg">
+                  <span key={tag} className="flex items-center gap-1 bg-indigo-500/12 border border-indigo-500/25 text-indigo-600 dark:text-indigo-300 text-[12px] sm:text-xs px-2 py-0.5 rounded-lg">
                     <Tag size={9} />{tag}
                     <button type="button" onClick={() => setTags(tags.filter((t) => t !== tag))}><X size={9} /></button>
                   </span>
@@ -455,7 +455,7 @@ function QuickAddForm() {
               </div>
               <div className="flex flex-wrap gap-1 mb-2">
                 {SUGGESTED_TAGS.filter((t) => !tags.includes(t)).slice(0, 4).map((tag) => (
-                  <button key={tag} type="button" onClick={() => addTag(tag)} className="text-xs text-slate-400 dark:text-gray-600 border border-slate-200 dark:border-white/8 px-2 py-0.5 rounded-lg hover:border-indigo-400/40 hover:text-indigo-500 transition-colors">
+                  <button key={tag} type="button" onClick={() => addTag(tag)} className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-600 border border-slate-200 dark:border-white/8 px-2 py-0.5 rounded-lg hover:border-indigo-400/40 hover:text-indigo-500 transition-colors">
                     +{tag}
                   </button>
                 ))}
@@ -467,7 +467,7 @@ function QuickAddForm() {
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(tagInput) } }}
                   placeholder="Новый тег..."
-                  className="flex-1 bg-slate-50 dark:bg-[#0d0d14] border border-slate-200 dark:border-white/8 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400/60"
+                  className="flex-1 bg-slate-50 dark:bg-[#0d0d14] border border-slate-200 dark:border-white/8 rounded-xl px-3 py-2 sm:py-1.5 text-[13px] sm:text-xs text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400/60"
                 />
                 <button type="button" onClick={() => addTag(tagInput)} className="px-3 rounded-xl bg-indigo-500/12 border border-indigo-500/25 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
                   <Plus size={13} />
@@ -485,7 +485,7 @@ function QuickAddForm() {
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full py-3 rounded-2xl bg-green-500/15 border border-green-500/25 text-green-600 dark:text-green-400 font-semibold text-sm flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-2xl bg-green-500/15 border border-green-500/25 text-green-600 dark:text-green-400 font-semibold text-[15px] sm:text-sm flex items-center justify-center gap-2"
           >
             <Check size={16} /> Сохранено
           </motion.div>
@@ -497,7 +497,7 @@ function QuickAddForm() {
             animate={{ opacity: 1 }}
             whileTap={{ scale: 0.98 }}
             className={cn(
-              'w-full py-3 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2',
+              'w-full py-3 rounded-2xl font-semibold text-[15px] sm:text-sm transition-all flex items-center justify-center gap-2',
               type === 'expense' ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25' : 'bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/25'
             )}
           >
