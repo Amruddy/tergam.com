@@ -118,24 +118,37 @@ export function UserProfileModal({
   const body = (
     <FormCard title={forceSetup ? 'Личный кабинет' : 'Мой кабинет'} onClose={onClose ?? (() => {})}>
       <div className="space-y-4">
-        <div className="flex items-center gap-3 rounded-2xl bg-slate-50 dark:bg-[#0a0a0f] border border-slate-200 dark:border-white/8 px-4 py-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center">
+        <div
+          className="flex items-center gap-3 rounded-2xl px-4 py-3"
+          style={{
+            background: 'rgba(124,58,237,0.06)',
+            border: '1px solid rgba(124,58,237,0.15)',
+          }}
+        >
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: 'rgba(124,58,237,0.12)',
+              border: '1px solid rgba(124,58,237,0.20)',
+              color: '#7C3AED',
+            }}
+          >
             <UserRound size={18} />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+            <div className="text-sm font-semibold text-slate-900 dark:text-white truncate font-heading">
               {fullName.trim() || authEmail || 'Пользователь'}
             </div>
-            <div className="text-xs text-slate-400 dark:text-gray-500 break-words">
+            <div className="text-xs text-slate-400 dark:text-slate-500 break-words mt-0.5">
               {isAuthenticated
                 ? `Авторизован: ${authEmail}`
-                : 'Локальный режим. Для синхронизации между устройствами войдите в аккаунт.'}
+                : 'Локальный режим — войдите для синхронизации.'}
             </div>
           </div>
         </div>
 
         {!isAuthenticated && (
-          <form onSubmit={handleAuth} className="space-y-3 rounded-2xl border border-slate-200 dark:border-white/8 p-4">
+          <form onSubmit={handleAuth} className="space-y-3 rounded-2xl border border-slate-200/70 dark:border-white/[0.07] bg-slate-50/50 dark:bg-white/[0.02] p-4">
             <div className="flex gap-2">
               <Btn type="button" variant={authMode === 'login' ? 'primary' : 'secondary'} className="flex-1" onClick={() => setAuthMode('login')}>
                 Вход
@@ -162,9 +175,9 @@ export function UserProfileModal({
               </div>
             )}
 
-            {authError && <div className="text-xs text-red-500">{authError}</div>}
-            {authMessage && <div className="text-xs text-green-600 dark:text-green-400">{authMessage}</div>}
-            {syncError && <div className="text-xs text-red-500">{syncError}</div>}
+            {authError && <div className="text-xs rounded-xl px-3 py-2" style={{ background: 'rgba(225,29,72,0.08)', color: '#E11D48', border: '1px solid rgba(225,29,72,0.18)' }}>{authError}</div>}
+            {authMessage && <div className="text-xs rounded-xl px-3 py-2" style={{ background: 'rgba(5,150,105,0.08)', color: '#059669', border: '1px solid rgba(5,150,105,0.18)' }}>{authMessage}</div>}
+            {syncError && <div className="text-xs rounded-xl px-3 py-2" style={{ background: 'rgba(225,29,72,0.08)', color: '#E11D48', border: '1px solid rgba(225,29,72,0.18)' }}>{syncError}</div>}
 
             <Btn type="submit" variant="primary" className="w-full" disabled={authLoading || !authFormEmail.trim() || !authPassword}>
               {authLoading ? 'Подождите...' : authMode === 'login' ? 'Войти' : 'Создать аккаунт'}

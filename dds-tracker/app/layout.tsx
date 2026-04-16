@@ -1,11 +1,20 @@
 import type { Metadata } from 'next'
-import { Montserrat } from 'next/font/google'
+import { Montserrat, Inter } from 'next/font/google'
 import './globals.css'
 import { AppShell } from '@/components/AppShell'
 
+/* Brand / heading font */
 const montserrat = Montserrat({
   subsets: ['cyrillic', 'latin'],
   variable: '--font-primary',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800'],
+})
+
+/* Body / UI font — higher readability at small sizes */
+const inter = Inter({
+  subsets: ['cyrillic', 'latin'],
+  variable: '--font-body',
   display: 'swap',
 })
 
@@ -17,8 +26,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`dark ${montserrat.variable}`}>
-      <body className="font-sans bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white min-h-screen transition-colors duration-300">
+    <html lang="ru" className={`dark ${montserrat.variable} ${inter.variable}`}>
+      <body className="font-sans min-h-screen transition-colors duration-300" style={{ viewTransitionName: 'root' }}>
         <AppShell>{children}</AppShell>
       </body>
     </html>

@@ -11,10 +11,10 @@ import { Btn, EmptyState, FieldLabel, FormCard, IconBtn, PageHeader, SectionLabe
 import { getCategoryById } from '@/lib/categories'
 
 const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string; emoji: string; color: string }[] = [
-  { value: 'cash', label: 'Наличные', emoji: '💵', color: '#22c55e' },
-  { value: 'card', label: 'Карта', emoji: '💳', color: '#6366f1' },
+  { value: 'cash', label: 'Наличные', emoji: '💵', color: '#059669' },
+  { value: 'card', label: 'Карта', emoji: '💳', color: '#7C3AED' },
   { value: 'savings', label: 'Сбережения', emoji: '🪙', color: '#f59e0b' },
-  { value: 'debt', label: 'Долги', emoji: '📉', color: '#ef4444' },
+  { value: 'debt', label: 'Долги', emoji: '📉', color: '#E11D48' },
 ]
 
 type HistoryItem =
@@ -190,66 +190,101 @@ function AccountCard({
   const positive = balance >= 0
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 md:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: `${account.color}16` }}>
-            {account.emoji}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      className="min-w-0 bg-white dark:bg-[#0F1523] rounded-2xl overflow-hidden"
+      style={{
+        border: `1px solid ${account.color}22`,
+        boxShadow: `0 4px 16px rgba(15,23,42,0.07), 0 0 0 1px ${account.color}10`,
+      }}
+    >
+      {/* Color accent bar */}
+      <div
+        className="h-1 w-full"
+        style={{ background: `linear-gradient(90deg, ${account.color}, ${account.color}66)` }}
+      />
+
+      <div className="p-4 md:p-5" style={{ background: `${account.color}04` }}>
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+              style={{ background: `${account.color}16`, border: `1px solid ${account.color}24` }}
+            >
+              {account.emoji}
+            </div>
+            <div className="min-w-0">
+              <div className="font-semibold text-slate-900 dark:text-white truncate font-heading">{account.name}</div>
+              <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                {getAccountTypeLabel(account.type)}{account.archived ? ' • архив' : ''}
+              </div>
+            </div>
           </div>
-          <div className="min-w-0">
-            <div className="font-semibold text-slate-900 dark:text-white truncate">{account.name}</div>
-            <div className="text-xs text-slate-400 dark:text-gray-500">{getAccountTypeLabel(account.type)}{account.archived ? ' • архив' : ''}</div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <IconBtn variant="secondary" onClick={onEdit} title="Редактировать счёт">
+              <PencilLine size={12} />
+            </IconBtn>
+            <IconBtn variant="secondary" onClick={onToggleArchive} title={account.archived ? 'Вернуть из архива' : 'Архивировать'}>
+              <Archive size={12} />
+            </IconBtn>
+            {account.archived && (
+              <IconBtn variant="danger" onClick={onDelete} title="Удалить счёт">
+                <Trash2 size={12} />
+              </IconBtn>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <IconBtn variant="secondary" onClick={onEdit} title="Редактировать счёт">
-            <PencilLine size={12} />
-          </IconBtn>
-          <IconBtn variant="secondary" onClick={onToggleArchive} title={account.archived ? 'Вернуть из архива' : 'Архивировать'}>
-            <Archive size={12} />
-          </IconBtn>
-          {account.archived && (
-            <IconBtn variant="danger" onClick={onDelete} title="Удалить счёт">
-              <Trash2 size={12} />
-            </IconBtn>
+
+        {/* Balance grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div
+            className="rounded-xl p-3"
+            style={{ background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.80)' }}
+          >
+            <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Баланс</div>
+            <div
+              className={cn('text-base xl:text-lg font-bold font-heading break-words leading-tight', positive ? 'text-slate-900 dark:text-white' : 'text-[#E11D48]')}
+            >
+              {formatCurrency(balance, settings.currency)}
+            </div>
+          </div>
+          <div
+            className="rounded-xl p-3"
+            style={{ background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.80)' }}
+          >
+            <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">За месяц</div>
+            <div
+              className={cn('text-sm font-bold font-heading break-words leading-tight', monthChange >= 0 ? 'text-[#059669] dark:text-[#10B981]' : 'text-[#E11D48]')}
+            >
+              {monthChange >= 0 ? '+' : '−'}{formatCurrency(Math.abs(monthChange), settings.currency)}
+            </div>
+          </div>
+        </div>
+
+        {/* Activity */}
+        <div className="pt-3.5 border-t border-white/60 dark:border-white/[0.05]">
+          <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2.5">Последняя активность</div>
+          {history.length === 0 ? (
+            <div className="text-xs text-slate-400 dark:text-slate-600 py-2">Операций по счёту пока нет</div>
+          ) : (
+            <div className="space-y-2">
+              {history.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs text-slate-700 dark:text-slate-300 truncate">{item.title}</div>
+                    <div className="text-[11px] text-slate-400 dark:text-slate-600 truncate">{item.subtitle} • {formatDate(item.date)}</div>
+                  </div>
+                  <div className={cn('text-xs font-semibold flex-shrink-0 font-heading', item.amount >= 0 ? 'text-[#059669] dark:text-[#10B981]' : 'text-[#E11D48]')}>
+                    {item.amount >= 0 ? '+' : '−'}{formatCurrency(Math.abs(item.amount), settings.currency)}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-1">Текущий баланс</div>
-          <div className={cn('text-lg xl:text-xl font-bold break-words', positive ? 'text-slate-900 dark:text-white' : 'text-red-500')}>
-            {formatCurrency(balance, settings.currency)}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-1">Изменение за месяц</div>
-          <div className={cn('text-sm font-semibold break-words', monthChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500')}>
-            {monthChange >= 0 ? '+' : '−'}{formatCurrency(Math.abs(monthChange), settings.currency)}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/[0.05]">
-        <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-2">Последняя активность</div>
-        {history.length === 0 ? (
-          <div className="text-xs text-slate-400 dark:text-gray-600">Операций по счёту пока нет</div>
-        ) : (
-          <div className="space-y-2.5">
-            {history.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs text-slate-700 dark:text-gray-300 truncate">{item.title}</div>
-                  <div className="text-[11px] text-slate-400 dark:text-gray-600 truncate">{item.subtitle} • {formatDate(item.date)}</div>
-                </div>
-                <div className={cn('text-xs font-semibold flex-shrink-0', item.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500')}>
-                  {item.amount >= 0 ? '+' : '−'}{formatCurrency(Math.abs(item.amount), settings.currency)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </motion.div>
   )
@@ -335,9 +370,9 @@ export function AccountsPage() {
 
       <StatStrip items={[
         { label: 'Активных счетов', value: String(activeAccounts.length), icon: Wallet, color: '#0ea5e9' },
-        { label: 'Общий баланс', value: formatCurrency(totalBalance, settings.currency), icon: ArrowUpCircle, color: '#22c55e' },
-        { label: 'Изменение за месяц', value: `${monthDelta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(monthDelta), settings.currency)}`, icon: ArrowUpCircle, color: monthDelta >= 0 ? '#6366f1' : '#ef4444' },
-        { label: 'Долги', value: formatCurrency(debtTotal, settings.currency), icon: ArrowDownCircle, color: '#ef4444' },
+        { label: 'Общий баланс', value: formatCurrency(totalBalance, settings.currency), icon: ArrowUpCircle, color: '#059669' },
+        { label: 'Изменение за месяц', value: `${monthDelta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(monthDelta), settings.currency)}`, icon: ArrowUpCircle, color: monthDelta >= 0 ? '#7C3AED' : '#E11D48' },
+        { label: 'Долги', value: formatCurrency(debtTotal, settings.currency), icon: ArrowDownCircle, color: '#E11D48' },
       ]} />
 
       <AnimatePresence>
