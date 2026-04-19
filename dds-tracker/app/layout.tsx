@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Montserrat, Inter } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 import { AppShell } from '@/components/AppShell'
 
@@ -29,6 +31,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru" className={`dark ${montserrat.variable} ${inter.variable}`}>
       <body className="font-sans min-h-screen transition-colors duration-300" style={{ viewTransitionName: 'root' }}>
         <AppShell>{children}</AppShell>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
