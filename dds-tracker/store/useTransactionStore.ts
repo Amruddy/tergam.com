@@ -20,6 +20,15 @@ import {
   dbReplaceAccountReferences,
   dbClearAllUserData,
 } from '@/lib/db'
+import {
+  validateTransaction,
+  validateTransfer,
+  validateBudget,
+  validateGoal,
+  validateAccount,
+  validateRecurring,
+  validateSettings,
+} from '@/lib/validation'
 
 function shouldApply(rec: RecurringTransaction, today: Date): boolean {
   if (!rec.active) return false
@@ -130,17 +139,21 @@ export const useTransactionStore = create<TransactionStore>()(
         syncError: null,
 
         addTransaction: (t) => {
+          try { validateTransaction(t) } catch (e) { handleSyncError(e, 'Ошибка валидации транзакции.'); return }
           const newTx: Transaction = { ...t, id: generateId(), createdAt: new Date().toISOString() }
           set((s) => ({ transactions: [newTx, ...s.transactions] }))
           syncTask(() => dbUpsertTransaction(newTx), 'Не удалось сохранить транзакцию в облаке.')
         },
 
         updateTransaction: (id, updates) => {
+          const current = get().transactions.find((t) => t.id === id)
+          if (!current) return
+          const merged = { ...current, ...updates }
+          try { validateTransaction(merged) } catch (e) { handleSyncError(e, 'Ошибка валидации транзакции.'); return }
           set((s) => ({
-            transactions: s.transactions.map((t) => t.id === id ? { ...t, ...updates } : t),
+            transactions: s.transactions.map((t) => t.id === id ? merged : t),
           }))
-          const updated = get().transactions.find((t) => t.id === id)
-          if (updated) syncTask(() => dbUpsertTransaction(updated), 'Не удалось обновить транзакцию в облаке.')
+          syncTask(() => dbUpsertTransaction(merged), 'Не удалось обновить транзакцию в облаке.')
         },
 
         deleteTransaction: (id) => {
@@ -149,6 +162,7 @@ export const useTransactionStore = create<TransactionStore>()(
         },
 
         addTransfer: (t) => {
+          try { validateTransfer(t) } catch (e) { handleSyncError(e, 'Ошибка валидации перевода.'); return }
           const newTransfer: Transfer = { ...t, id: generateId(), createdAt: new Date().toISOString() }
           set((s) => ({ transfers: [newTransfer, ...s.transfers] }))
           syncTask(() => dbUpsertTransfer(newTransfer), 'Не удалось сохранить перевод в облаке.')
@@ -160,15 +174,19 @@ export const useTransactionStore = create<TransactionStore>()(
         },
 
         addBudget: (b) => {
+          try { validateBudget(b) } catch (e) { handleSyncError(e, 'Ошибка валидации бюджета.'); return }
           const newBudget: Budget = { ...b, id: generateId(), createdAt: new Date().toISOString() }
           set((s) => ({ budgets: [...s.budgets, newBudget] }))
           syncTask(() => dbUpsertBudget(newBudget), 'Не удалось сохранить бюджет в облаке.')
         },
 
         updateBudget: (id, updates) => {
-          set((s) => ({ budgets: s.budgets.map((b) => b.id === id ? { ...b, ...updates } : b) }))
-          const updated = get().budgets.find((b) => b.id === id)
-          if (updated) syncTask(() => dbUpsertBudget(updated), 'Не удалось обновить бюджет в облаке.')
+          const current = get().budgets.find((b) => b.id === id)
+          if (!current) return
+          const merged = { ...current, ...updates }
+          try { validateBudget(merged) } catch (e) { handleSyncError(e, 'Ошибка валидации бюджета.'); return }
+          set((s) => ({ budgets: s.budgets.map((b) => b.id === id ? merged : b) }))
+          syncTask(() => dbUpsertBudget(merged), 'Не удалось обновить бюджет в облаке.')
         },
 
         deleteBudget: (id) => {
@@ -177,15 +195,19 @@ export const useTransactionStore = create<TransactionStore>()(
         },
 
         addGoal: (g) => {
+          try { validateGoal(g) } catch (e) { handleSyncError(e, 'Ошибка валидации цели.'); return }
           const newGoal: Goal = { ...g, id: generateId(), createdAt: new Date().toISOString() }
           set((s) => ({ goals: [...s.goals, newGoal] }))
           syncTask(() => dbUpsertGoal(newGoal), 'Не удалось сохранить цель в облаке.')
         },
 
         updateGoal: (id, updates) => {
-          set((s) => ({ goals: s.goals.map((g) => g.id === id ? { ...g, ...updates } : g) }))
-          const updated = get().goals.find((g) => g.id === id)
-          if (updated) syncTask(() => dbUpsertGoal(updated), 'Не удалось обновить цель в облаке.')
+          const current = get().goals.find((g) => g.id === id)
+          if (!current) return
+          const merged = { ...current, ...updates }
+          try { validateGoal(merged) } catch (e) { handleSyncError(e, 'Ошибка валидации цели.'); return }
+          set((s) => ({ goals: s.goals.map((g) => g.id === id ? merged : g) }))
+          syncTask(() => dbUpsertGoal(merged), 'Не удалось обновить цель в облаке.')
         },
 
         deleteGoal: (id) => {
@@ -194,17 +216,21 @@ export const useTransactionStore = create<TransactionStore>()(
         },
 
         addAccount: (a) => {
+          try { validateAccount(a) } catch (e) { handleSyncError(e, 'Ошибка валидации счёта.'); return }
           const newAccount: Account = { ...a, archived: a.archived ?? false, id: generateId(), createdAt: new Date().toISOString() }
           set((s) => ({ accounts: [...s.accounts, newAccount] }))
           syncTask(() => dbUpsertAccount(newAccount), 'Не удалось сохранить счёт в облаке.')
         },
 
         updateAccount: (id, updates) => {
+          const current = get().accounts.find((a) => a.id === id)
+          if (!current) return
+          const merged = { ...current, ...updates }
+          try { validateAccount(merged) } catch (e) { handleSyncError(e, 'Ошибка валидации счёта.'); return }
           set((s) => ({
-            accounts: s.accounts.map((a) => a.id === id ? { ...a, ...updates } : a),
+            accounts: s.accounts.map((a) => a.id === id ? merged : a),
           }))
-          const updated = get().accounts.find((a) => a.id === id)
-          if (updated) syncTask(() => dbUpsertAccount(updated), 'Не удалось обновить счёт в облаке.')
+          syncTask(() => dbUpsertAccount(merged), 'Не удалось обновить счёт в облаке.')
         },
 
         deleteAccount: (id) => {
@@ -234,15 +260,19 @@ export const useTransactionStore = create<TransactionStore>()(
         },
 
         addRecurring: (r) => {
+          try { validateRecurring(r) } catch (e) { handleSyncError(e, 'Ошибка валидации автоплатежа.'); return }
           const newRec: RecurringTransaction = { ...r, id: generateId(), lastApplied: null, createdAt: new Date().toISOString() }
           set((s) => ({ recurring: [...s.recurring, newRec] }))
           syncTask(() => dbUpsertRecurring(newRec), 'Не удалось сохранить автоплатёж в облаке.')
         },
 
         updateRecurring: (id, updates) => {
-          set((s) => ({ recurring: s.recurring.map((r) => r.id === id ? { ...r, ...updates } : r) }))
-          const updated = get().recurring.find((r) => r.id === id)
-          if (updated) syncTask(() => dbUpsertRecurring(updated), 'Не удалось обновить автоплатёж в облаке.')
+          const current = get().recurring.find((r) => r.id === id)
+          if (!current) return
+          const merged = { ...current, ...updates }
+          try { validateRecurring(merged) } catch (e) { handleSyncError(e, 'Ошибка валидации автоплатежа.'); return }
+          set((s) => ({ recurring: s.recurring.map((r) => r.id === id ? merged : r) }))
+          syncTask(() => dbUpsertRecurring(merged), 'Не удалось обновить автоплатёж в облаке.')
         },
 
         deleteRecurring: (id) => {
@@ -287,6 +317,7 @@ export const useTransactionStore = create<TransactionStore>()(
         },
 
         updateSettings: (s) => {
+          try { validateSettings(s) } catch (e) { handleSyncError(e, 'Ошибка валидации настроек.'); return }
           set((state) => ({ settings: { ...state.settings, ...s } }))
           const { settings, profile } = get()
           syncTask(() => dbUpsertSettings(settings, profile), 'Не удалось сохранить настройки в облаке.')
