@@ -687,16 +687,16 @@ export function HomePage() {
   return (
     <div className="py-1 sm:py-2 w-full space-y-3 sm:space-y-4">
       <div className="space-y-3 lg:space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)] lg:gap-5 lg:space-y-0 lg:items-start">
-        <div className="space-y-3 sm:space-y-4 min-w-0">
+        <div className="min-w-0 space-y-3 sm:space-y-4">
           <SummaryStrip />
           <HomeGoalCard />
           <QuickTextBar />
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3 md:p-5 xl:p-6 lg:sticky lg:top-[96px] xl:top-[104px]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="self-start bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3 md:p-5 xl:p-6 lg:-translate-y-5 lg:self-start lg:sticky lg:top-[76px] xl:top-[84px]"
         >
           <QuickAddForm />
         </motion.div>
