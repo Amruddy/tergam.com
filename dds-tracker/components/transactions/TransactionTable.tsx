@@ -68,8 +68,8 @@ function SwipeRow({ tx, onEdit, onDelete }: { tx: Transaction; onEdit: () => voi
           </div>
           <div className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-500">{formatDate(tx.date)}</div>
         </div>
-        <button onClick={onEdit} className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center flex-shrink-0 ml-1">
-          <Edit2 size={11} />
+        <button onClick={onEdit} className="min-h-10 min-w-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center flex-shrink-0 ml-1">
+          <Edit2 size={14} />
         </button>
       </motion.div>
     </div>
@@ -84,40 +84,40 @@ function TableRow({ tx, onEdit, onDelete }: { tx: Transaction; onEdit: () => voi
 
   return (
     <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }} className="border-b border-slate-50 dark:border-[#1e1e2e]/50 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors group">
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 xl:px-5 xl:py-3.5">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px]" style={{ background: `${cat.color}15` }}>{cat.emoji}</div>
           <span className="text-xs text-slate-500 dark:text-gray-400">{cat.name}</span>
         </div>
       </td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 xl:px-5 xl:py-3.5">
         <div className="flex items-center gap-2">
           <span className="text-[13px]">{account.emoji}</span>
-          <span className="text-xs text-slate-500 dark:text-gray-400">{account.name}</span>
+          <span className="truncate text-xs text-slate-500 dark:text-gray-400">{account.name}</span>
         </div>
       </td>
-      <td className="px-4 py-3"><span className="text-sm text-slate-900 dark:text-white">{tx.description || '—'}</span></td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 max-w-[220px]"><span className="block truncate text-sm text-slate-900 dark:text-white">{tx.description || '—'}</span></td>
+      <td className="px-4 py-3 xl:px-5 xl:py-3.5">
         <div className="flex flex-wrap gap-1">
           {tx.tags.map((tag) => <span key={tag} className="text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-gray-500">{tag}</span>)}
         </div>
       </td>
-      <td className="px-4 py-3 text-xs text-slate-400 dark:text-gray-500 whitespace-nowrap">{formatDate(tx.date)}</td>
-      <td className="px-4 py-3 text-right">
-        <span className={cn('font-semibold text-sm', tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+      <td className="px-4 py-3 text-xs text-slate-400 dark:text-gray-500 whitespace-nowrap xl:px-5 xl:py-3.5">{formatDate(tx.date)}</td>
+      <td className="px-4 py-3 text-right xl:px-5 xl:py-3.5">
+        <span className={cn('font-semibold text-sm whitespace-nowrap', tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
           {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount, settings.currency)}
         </span>
       </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={onEdit} className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 flex items-center justify-center">
-            <Edit2 size={12} />
+      <td className="px-4 py-3 xl:px-5 xl:py-3.5">
+        <div className="flex items-center gap-1 opacity-100 transition-opacity xl:opacity-0 xl:group-hover:opacity-100">
+          <button onClick={onEdit} className="min-h-10 min-w-10 rounded-xl bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 flex items-center justify-center">
+            <Edit2 size={14} />
           </button>
           {confirmDel ? (
-            <button onClick={onDelete} className="px-2 py-1 rounded-lg bg-red-500/15 text-red-500 text-xs hover:bg-red-500/25">✓</button>
+            <button onClick={onDelete} className="min-h-10 px-3 rounded-xl bg-red-500/15 text-red-500 text-xs hover:bg-red-500/25">✓</button>
           ) : (
-            <button onClick={() => setConfirmDel(true)} className="w-7 h-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
-              <Trash2 size={12} />
+            <button onClick={() => setConfirmDel(true)} className="min-h-10 min-w-10 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+              <Trash2 size={14} />
             </button>
           )}
         </div>
@@ -193,20 +193,20 @@ export function TransactionTable() {
 
   const Pagination = () => totalPages <= 1 ? null : (
     <div className="p-3 border-t border-slate-100 dark:border-[#1e1e2e] flex items-center justify-center gap-1.5">
-      <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 flex items-center justify-center"><ChevronLeft size={14} /></button>
+      <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="min-h-10 min-w-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 flex items-center justify-center"><ChevronLeft size={14} /></button>
       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
         const p = totalPages <= 5 ? i + 1 : Math.max(1, Math.min(totalPages - 4, page - 2)) + i
         return (
           <button
             key={p}
             onClick={() => setPage(p)}
-            className={cn('w-8 h-8 rounded-lg text-xs font-medium transition-all', page === p ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30' : 'text-slate-500 dark:text-gray-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5')}
+            className={cn('min-h-10 min-w-10 rounded-xl text-xs font-medium transition-all', page === p ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30' : 'text-slate-500 dark:text-gray-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5')}
           >
             {p}
           </button>
         )
       })}
-      <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 flex items-center justify-center"><ChevronRight size={14} /></button>
+      <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="min-h-10 min-w-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 flex items-center justify-center"><ChevronRight size={14} /></button>
     </div>
   )
 
@@ -214,8 +214,8 @@ export function TransactionTable() {
     <>
       <AnimatePresence>
         {editingTx && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingTx(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setEditingTx(null)}>
+            <motion.div initial={{ scale: 0.98, opacity: 0, y: 24 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.98, opacity: 0, y: 24 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-lg max-h-[min(88dvh,900px)] overflow-y-auto rounded-t-[28px] md:rounded-2xl">
               <TransactionForm editingTx={editingTx} onClose={() => setEditingTx(null)} />
             </motion.div>
           </motion.div>
@@ -277,12 +277,12 @@ export function TransactionTable() {
         <Pagination />
       </div>
 
-      <div className="hidden md:block bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-[#1e1e2e] flex items-center justify-between">
+      <div className="hidden md:block bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl overflow-hidden overflow-x-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-[#1e1e2e] xl:px-5 xl:py-4.5">
           <span className="text-xs text-slate-400 dark:text-gray-500">Найдено: <span className="text-slate-900 dark:text-white font-medium">{filtered.length}</span></span>
           <span className="text-xs text-slate-300 dark:text-gray-600">Стр. {page} / {totalPages}</span>
         </div>
-        <table className="w-full">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-slate-100 dark:border-[#1e1e2e]">
               <th className="text-left text-xs text-slate-400 dark:text-gray-500 font-medium px-4 py-3">Категория</th>
@@ -290,7 +290,7 @@ export function TransactionTable() {
               <th className="text-left text-xs text-slate-400 dark:text-gray-500 font-medium px-4 py-3">Описание</th>
               <th className="text-left text-xs text-slate-400 dark:text-gray-500 font-medium px-4 py-3">Теги</th>
               <th className="text-left text-xs text-slate-400 dark:text-gray-500 font-medium px-4 py-3 cursor-pointer hover:text-slate-700 dark:hover:text-white" onClick={() => toggleSort('date')}><span className="flex items-center gap-1">Дата <SortIcon field="date" /></span></th>
-              <th className="text-right text-xs text-slate-400 dark:text-gray-500 font-medium px-4 py-3 cursor-pointer hover:text-slate-700 dark:hover:text-white" onClick={() => toggleSort('amount')}><span className="flex items-center justify-end gap-1">Сумма <SortIcon field="amount" /></span></th>
+              <th className="text-right text-xs text-slate-400 dark:text-gray-500 font-medium px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-700 dark:hover:text-white" onClick={() => toggleSort('amount')}><span className="flex items-center justify-end gap-1">Сумма <SortIcon field="amount" /></span></th>
               <th className="px-4 py-3 w-20" />
             </tr>
           </thead>

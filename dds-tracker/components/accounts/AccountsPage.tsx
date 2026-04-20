@@ -7,7 +7,7 @@ import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getAccountMonthChange, getAccountTypeLabel, getActiveAccounts } from '@/lib/accounts'
 import { formatCurrency, cn, getMonthKey, formatDate } from '@/lib/utils'
 import { Account, AccountType } from '@/types'
-import { Btn, EmptyState, FieldLabel, FormCard, IconBtn, PageHeader, SectionLabel, StatStrip, inputCls } from '@/components/ui'
+import { Btn, EmptyState, FieldLabel, FormCard, IconBtn, PageHeader, SectionLabel, inputCls } from '@/components/ui'
 import { getCategoryById } from '@/lib/categories'
 
 const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string; emoji: string; color: string }[] = [
@@ -203,14 +203,14 @@ function AccountCard({
         </div>
         <div className="flex items-center gap-1">
           <IconBtn variant="secondary" onClick={onEdit} title="Редактировать счёт">
-            <PencilLine size={12} />
+            <PencilLine size={14} />
           </IconBtn>
           <IconBtn variant="secondary" onClick={onToggleArchive} title={account.archived ? 'Вернуть из архива' : 'Архивировать'}>
-            <Archive size={12} />
+            <Archive size={14} />
           </IconBtn>
           {account.archived && (
             <IconBtn variant="danger" onClick={onDelete} title="Удалить счёт">
-              <Trash2 size={12} />
+              <Trash2 size={14} />
             </IconBtn>
           )}
         </div>
@@ -252,6 +252,35 @@ function AccountCard({
         )}
       </div>
     </motion.div>
+  )
+}
+
+function AccountOverview({
+  items,
+}: {
+  items: { label: string; value: string; icon: React.ElementType; color: string }[]
+}) {
+  return (
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      {items.map(({ label, value, icon: Icon, color }) => (
+        <motion.div
+          key={label}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="min-w-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.06] bg-white dark:bg-[#13131a] p-4 md:p-5"
+        >
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl" style={{ background: `${color}14` }}>
+            <Icon size={17} style={{ color }} />
+          </div>
+          <div className="space-y-1">
+            <div className="text-[13px] md:text-sm leading-snug text-slate-400 dark:text-gray-500">{label}</div>
+            <div className="text-[clamp(1.5rem,5vw,2rem)] font-bold leading-[1.05] tracking-[-0.03em] text-slate-900 dark:text-white whitespace-nowrap">
+              {value}
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
   )
 }
 
@@ -319,7 +348,7 @@ export function AccountsPage() {
   const debtTotal = activeAccounts.filter((account) => getAccountBalance(account, transactions, transfers) < 0).reduce((sum, account) => sum + Math.abs(getAccountBalance(account, transactions, transfers)), 0)
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-4 py-2 sm:space-y-5">
       <PageHeader
         icon={Landmark}
         iconColor="#0ea5e9"
@@ -333,7 +362,7 @@ export function AccountsPage() {
         }
       />
 
-      <StatStrip items={[
+      <AccountOverview items={[
         { label: 'Активных счетов', value: String(activeAccounts.length), icon: Wallet, color: '#0ea5e9' },
         { label: 'Общий баланс', value: formatCurrency(totalBalance, settings.currency), icon: ArrowUpCircle, color: '#22c55e' },
         { label: 'Изменение за месяц', value: `${monthDelta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(monthDelta), settings.currency)}`, icon: ArrowUpCircle, color: monthDelta >= 0 ? '#6366f1' : '#ef4444' },
@@ -347,16 +376,16 @@ export function AccountsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4"
             onClick={() => { setMode(null); setSelectedAccount(null) }}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.98, opacity: 0, y: 24 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.98, opacity: 0, y: 24 }}
               transition={{ duration: 0.18 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-lg max-h-[min(88dvh,900px)] overflow-y-auto rounded-t-[28px] md:rounded-2xl"
             >
               {mode === 'create' && <AccountEditor title="Новый счёт" onClose={() => setMode(null)} />}
               {mode === 'edit' && selectedAccount && <AccountEditor title="Редактировать счёт" account={selectedAccount} onClose={() => { setSelectedAccount(null); setMode(null) }} />}

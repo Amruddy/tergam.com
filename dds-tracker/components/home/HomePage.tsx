@@ -7,24 +7,29 @@ import {
   Tag, X, ArrowRight, ChevronDown, ChevronUp, Zap, Mic, Square,
 } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
-import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
+import { getAccountBalance, getActiveAccounts, getDefaultAccountId } from '@/lib/accounts'
 import { CATEGORIES, getCategoryById } from '@/lib/categories'
-import { getDefaultAccountId } from '@/lib/accounts'
 import { formatCurrency, getMonthKey, cn } from '@/lib/utils'
+import {
+  DEFAULT_HOME_EXPENSE_CATEGORY_IDS,
+  DEFAULT_HOME_INCOME_CATEGORY_IDS,
+  HOME_CATEGORY_LIMIT,
+  HOME_CATEGORY_PICKS_STORAGE_KEY,
+  HOME_GOAL_STORAGE_KEY,
+  TRANSACTION_SUGGESTED_TAGS,
+} from '@/lib/app-constants'
 import { parseQuickInput } from '@/lib/parseQuick'
 import { TransactionType } from '@/types'
-import { AccountSelect } from '@/components/ui'
-
-const SUGGESTED_TAGS = ['работа', 'продукты', 'такси', 'жильё', 'досуг', 'здоровье']
-const HOME_GOAL_KEY = 'tergam-home-goal-id'
+import { TypeToggle } from '@/components/ui'
 
 type BrowserSpeechRecognition = {
   continuous: boolean
   interimResults: boolean
   lang: string
+  abort?: () => void
   onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
   onend: (() => void) | null
-  onerror: (() => void) | null
+  onerror: ((event: { error?: string }) => void) | null
   start: () => void
   stop: () => void
 }
@@ -44,7 +49,7 @@ function SummaryStrip() {
   }, [accounts, transactions, transfers])
 
   return (
-    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 xl:gap-3">
+    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 xl:gap-3 2xl:gap-4">
       {[
         { label: 'Доходы', value: stats.income, icon: TrendingUp, color: '#22c55e', sign: '+' },
         { label: 'Расходы', value: stats.expense, icon: TrendingDown, color: '#ef4444', sign: '−' },
@@ -57,7 +62,7 @@ function SummaryStrip() {
           transition={{ delay: i * 0.07 }}
           className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl px-2.5 py-3 sm:p-3 md:p-5 text-center flex flex-col justify-center"
         >
-          <div className="w-6 h-6 sm:w-7 sm:h-7 xl:w-8 xl:h-8 rounded-lg mx-auto mb-1.5 sm:mb-2 flex items-center justify-center" style={{ background: `${color}18` }}>
+          <div className="w-6 h-6 sm:w-7 sm:h-7 xl:w-8 xl:h-8 rounded-xl mx-auto mb-1.5 sm:mb-2 flex items-center justify-center" style={{ background: `${color}18` }}>
             <Icon size={14} style={{ color }} />
           </div>
           <div className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-0.5 leading-tight">{label}</div>
@@ -78,8 +83,17 @@ function QuickTextBar() {
   const [saved, setSaved] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [voiceSupported, setVoiceSupported] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null)
+  const committedTextRef = useRef('')
+  const listeningRef = useRef(false)
+
+  useEffect(() => {
+    if (!isListening) {
+      committedTextRef.current = text.trim()
+    }
+  }, [text])
 
   useEffect(() => {
     const speechWindow = window as Window & {
@@ -92,39 +106,77 @@ function QuickTextBar() {
     const recognition = new Recognition()
     recognition.lang = 'ru-RU'
     recognition.continuous = false
-    recognition.interimResults = false
+    recognition.interimResults = true
     recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript?.trim()
-      if (!transcript) return
-      const next = text ? `${text.trim()} ${transcript}` : transcript
+      let finalTranscript = ''
+      let interimTranscript = ''
+
+      for (let i = 0; i < event.results.length; i += 1) {
+        const chunk = event.results[i]?.[0]?.transcript ?? ''
+        if (!chunk) continue
+        if ((event.results[i] as { isFinal?: boolean }).isFinal) {
+          finalTranscript += chunk
+        } else {
+          interimTranscript += chunk
+        }
+      }
+
+      const base = committedTextRef.current
+      const finalPart = finalTranscript.trim()
+      const interimPart = interimTranscript.trim()
+
+      if (finalPart) {
+        committedTextRef.current = [base, finalPart].filter(Boolean).join(' ').trim()
+      }
+
+      const next = [committedTextRef.current, interimPart].filter(Boolean).join(' ').trim()
+      if (!next) return
       setText(next)
-      if (next.trim().length > 2) setPreview(parseQuickInput(next))
-      else setPreview(null)
+      setPreview(next.trim().length > 2 ? parseQuickInput(next) : null)
     }
-    recognition.onend = () => setIsListening(false)
-    recognition.onerror = () => setIsListening(false)
+    recognition.onend = () => {
+      listeningRef.current = false
+      setIsListening(false)
+    }
+    recognition.onerror = (event) => {
+      listeningRef.current = false
+      setIsListening(false)
+      const nextError =
+        event?.error === 'not-allowed'
+          ? 'Нет доступа к микрофону.'
+          : event?.error === 'no-speech'
+            ? 'Речь не распознана, попробуйте еще раз.'
+            : 'Не удалось завершить голосовой ввод.'
+      setVoiceError(nextError)
+    }
     recognitionRef.current = recognition
     setVoiceSupported(true)
 
     return () => {
+      recognition.abort?.()
       recognition.stop()
       recognitionRef.current = null
     }
-  }, [text])
+  }, [])
 
   const handleChange = (v: string) => {
     setText(v)
-    if (v.trim().length > 2) setPreview(parseQuickInput(v))
-    else setPreview(null)
+    setVoiceError(null)
+    setPreview(v.trim().length > 2 ? parseQuickInput(v) : null)
   }
 
   const toggleVoiceInput = () => {
     if (!recognitionRef.current) return
-    if (isListening) {
+    setVoiceError(null)
+    if (listeningRef.current) {
+      listeningRef.current = false
       recognitionRef.current.stop()
       setIsListening(false)
       return
     }
+    inputRef.current?.focus()
+    committedTextRef.current = text.trim()
+    listeningRef.current = true
     recognitionRef.current.start()
     setIsListening(true)
   }
@@ -142,6 +194,8 @@ function QuickTextBar() {
     })
     setText('')
     setPreview(null)
+    setVoiceError(null)
+    committedTextRef.current = ''
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
@@ -149,11 +203,11 @@ function QuickTextBar() {
   const cat = preview ? getCategoryById(preview.category) : null
 
   return (
-    <div className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3 md:p-5">
+    <div className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3 md:p-5 xl:p-6">
       <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5">
         <Zap size={14} className="text-amber-500 flex-shrink-0" />
         <span className="text-[13px] sm:text-xs font-semibold text-slate-700 dark:text-gray-300">Быстрый ввод</span>
-        <span className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-600 pt-0.5">напишите текстом</span>
+        <span className="pt-0.5 text-[12px] sm:text-xs text-slate-400 dark:text-gray-600">текстом или голосом</span>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -161,7 +215,7 @@ function QuickTextBar() {
           value={text}
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          placeholder="кофе 250, зарплата +50000, такси 400..."
+          placeholder="кофе 250, аренда 30000, зарплата +50000..."
           className="flex-1 min-w-0 h-10 sm:h-10 bg-slate-50 dark:bg-[#0d0d14] border border-slate-200 dark:border-white/8 rounded-xl px-3 text-[15px] sm:text-sm text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400/60"
         />
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -171,7 +225,7 @@ function QuickTextBar() {
               onClick={toggleVoiceInput}
               title={isListening ? 'Остановить запись' : 'Голосовой ввод'}
               className={cn(
-                'w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center transition-colors',
+                'min-h-11 min-w-11 rounded-xl border flex items-center justify-center transition-colors',
                 isListening
                   ? 'bg-red-500/12 border-red-500/30 text-red-500'
                   : 'bg-slate-50 dark:bg-[#0d0d14] border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-400 hover:border-indigo-400/40 hover:text-indigo-500'
@@ -186,7 +240,7 @@ function QuickTextBar() {
                 key="ok"
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-green-500/15 border border-green-500/25 flex items-center justify-center text-green-500"
+                className="min-h-11 min-w-11 rounded-xl bg-green-500/15 border border-green-500/25 flex items-center justify-center text-green-500"
               >
                 <Check size={16} />
               </motion.div>
@@ -195,7 +249,7 @@ function QuickTextBar() {
                 key="btn"
                 onClick={handleSubmit}
                 disabled={!preview?.amount}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors disabled:opacity-30"
+                className="min-h-11 min-w-11 rounded-xl bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors disabled:opacity-30"
               >
                 <ArrowRight size={15} />
               </motion.button>
@@ -222,8 +276,8 @@ function QuickTextBar() {
         )}
       </AnimatePresence>
       {voiceSupported && (
-        <p className="mt-1 text-[11px] sm:text-[10px] text-slate-400 dark:text-gray-500">
-          {isListening ? 'Слушаю. Говорите короткой фразой.' : 'Можно продиктовать фразу голосом.'}
+        <p className={cn('mt-1 text-[11px] sm:text-[10px]', voiceError ? 'text-red-500' : 'text-slate-400 dark:text-gray-500')}>
+          {voiceError ?? (isListening ? 'Слушаю. Говорите короткой фразой.' : 'Можно продиктовать фразу голосом.')}
         </p>
       )}
     </div>
@@ -235,7 +289,7 @@ function HomeGoalCard() {
   const [selectedGoalId, setSelectedGoalId] = useState('')
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(HOME_GOAL_KEY) || ''
+    const saved = window.localStorage.getItem(HOME_GOAL_STORAGE_KEY) || ''
     const exists = goals.some((g) => g.id === saved)
     if (exists) {
       setSelectedGoalId(saved)
@@ -249,7 +303,7 @@ function HomeGoalCard() {
   }, [goals])
 
   useEffect(() => {
-    if (selectedGoalId) window.localStorage.setItem(HOME_GOAL_KEY, selectedGoalId)
+    if (selectedGoalId) window.localStorage.setItem(HOME_GOAL_STORAGE_KEY, selectedGoalId)
   }, [selectedGoalId])
 
   if (goals.length === 0) return null
@@ -292,7 +346,7 @@ function HomeGoalCard() {
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-3 gap-2 text-center xl:gap-3">
           <div className="rounded-xl bg-white/70 dark:bg-white/[0.03] px-2 py-2">
             <div className="text-[12px] text-slate-400 dark:text-gray-500">Накоплено</div>
             <div className="text-[15px] sm:text-sm font-semibold text-slate-900 dark:text-white break-words">{formatCurrency(goal.savedAmount, settings.currency)}</div>
@@ -325,20 +379,86 @@ function QuickAddForm() {
   const [tagInput, setTagInput] = useState('')
   const [showExtra, setShowExtra] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false)
 
   const availableCategories = CATEGORIES.filter((c) => c.type === type || c.type === 'both')
+  const defaultHomeCategories = type === 'expense' ? [...DEFAULT_HOME_EXPENSE_CATEGORY_IDS] : [...DEFAULT_HOME_INCOME_CATEGORY_IDS]
+  const [homeCategoryIds, setHomeCategoryIds] = useState<string[]>(defaultHomeCategories)
+
   useEffect(() => {
     if (!accountId && activeAccounts.length > 0) {
       setAccountId(activeAccounts[0]?.id ?? getDefaultAccountId())
     }
   }, [activeAccounts, accountId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const raw = window.localStorage.getItem(HOME_CATEGORY_PICKS_STORAGE_KEY)
+      const parsed = raw ? JSON.parse(raw) as { expense?: string[]; income?: string[] } : null
+      const stored = type === 'expense' ? parsed?.expense : parsed?.income
+      const validIds = (stored ?? [])
+        .filter((id) => availableCategories.some((cat) => cat.id === id))
+        .slice(0, HOME_CATEGORY_LIMIT)
+
+      setHomeCategoryIds(
+        validIds.length > 0
+          ? validIds
+          : defaultHomeCategories
+              .filter((id) => availableCategories.some((cat) => cat.id === id))
+              .slice(0, HOME_CATEGORY_LIMIT)
+      )
+    } catch {
+      setHomeCategoryIds(
+        defaultHomeCategories
+          .filter((id) => availableCategories.some((cat) => cat.id === id))
+          .slice(0, HOME_CATEGORY_LIMIT)
+      )
+    }
+  }, [type, availableCategories])
+
   const handleAmountChange = (v: string) => setAmount(v.replace(/[^\d]/g, ''))
   const formatDisplay = (v: string) => (v ? Number(v).toLocaleString('ru-RU') : '')
+
+  const visibleCategories = homeCategoryIds
+    .map((id) => availableCategories.find((cat) => cat.id === id))
+    .filter((cat): cat is NonNullable<typeof cat> => Boolean(cat))
+
+  const persistHomeCategories = (nextIds: string[]) => {
+    setHomeCategoryIds(nextIds)
+    if (typeof window === 'undefined') return
+
+    try {
+      const raw = window.localStorage.getItem(HOME_CATEGORY_PICKS_STORAGE_KEY)
+      const parsed = raw ? JSON.parse(raw) as { expense?: string[]; income?: string[] } : {}
+      const nextValue = type === 'expense'
+        ? { ...parsed, expense: nextIds }
+        : { ...parsed, income: nextIds }
+      window.localStorage.setItem(HOME_CATEGORY_PICKS_STORAGE_KEY, JSON.stringify(nextValue))
+    } catch {
+      const fallback = type === 'expense' ? { expense: nextIds } : { income: nextIds }
+      window.localStorage.setItem(HOME_CATEGORY_PICKS_STORAGE_KEY, JSON.stringify(fallback))
+    }
+  }
+
+  const toggleHomeCategory = (id: string) => {
+    if (homeCategoryIds.includes(id)) {
+      persistHomeCategories(homeCategoryIds.filter((currentId) => currentId !== id))
+      if (category === id) setCategory('')
+      return
+    }
+
+    if (homeCategoryIds.length >= HOME_CATEGORY_LIMIT) return
+    persistHomeCategories([...homeCategoryIds, id])
+  }
+
   const addTag = (tag: string) => {
     const t = tag.trim().toLowerCase()
     if (t && !tags.includes(t)) setTags([...tags, t])
     setTagInput('')
   }
+
   const reset = () => {
     setAmount('')
     setCategory('')
@@ -360,25 +480,7 @@ function QuickAddForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-      <div className="flex bg-slate-100 dark:bg-[#0d0d14] rounded-2xl p-1 gap-1">
-        {(['expense', 'income'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => { setType(t); setCategory('') }}
-            className={cn(
-              'flex-1 py-2 rounded-xl text-[13px] sm:text-sm font-semibold transition-all duration-200',
-              type === t
-                ? t === 'expense'
-                  ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/25 shadow-sm'
-                  : 'bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/25 shadow-sm'
-                : 'text-slate-400 dark:text-gray-500 hover:text-slate-700 dark:hover:text-gray-300'
-            )}
-          >
-            {t === 'expense' ? '❤️ Расход' : '💚 Доход'}
-          </button>
-        ))}
-      </div>
+      <TypeToggle value={type} onChange={(nextType) => { setType(nextType); setCategory('') }} />
 
       <div className="relative">
         <input
@@ -394,35 +496,106 @@ function QuickAddForm() {
       </div>
 
       <div>
-        <p className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Категория</p>
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
-          {availableCategories.map((cat) => (
+        <AnimatePresence initial={false}>
+          {showCategoryPicker && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {availableCategories.map((cat) => {
+                  const selected = homeCategoryIds.includes(cat.id)
+                  const disabled = !selected && homeCategoryIds.length >= HOME_CATEGORY_LIMIT
+
+                  return (
+                    <button
+                      key={`pick-${cat.id}`}
+                      type="button"
+                      onClick={() => toggleHomeCategory(cat.id)}
+                      disabled={disabled}
+                      className={cn(
+                        'flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2 text-center transition-all',
+                        selected
+                          ? 'border-2 shadow-sm'
+                          : 'border-slate-200 text-slate-500 hover:border-slate-300 dark:border-white/8 dark:text-gray-400 dark:hover:border-white/15',
+                        disabled && 'cursor-not-allowed opacity-45'
+                      )}
+                      style={selected ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
+                    >
+                      <span className="text-base leading-none">{cat.emoji}</span>
+                      <span className={cn('text-[10px] font-medium leading-tight', selected ? 'text-slate-900 dark:text-white' : '')}>
+                        {cat.name}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="grid grid-cols-4 gap-1.5 xl:gap-2">
+          {visibleCategories.map((cat) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => setCategory(cat.id)}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 p-1.5 sm:p-2 rounded-xl border transition-all h-full',
+                'flex min-h-[78px] flex-col items-center justify-center gap-1 rounded-[18px] border px-2 py-2 text-center transition-all',
                 category === cat.id
                   ? 'border-2 shadow-sm'
                   : 'border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-500 hover:border-slate-300 dark:hover:border-white/15'
               )}
               style={category === cat.id ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
             >
-              <span className="text-[14px] sm:text-[16px] leading-none">{cat.emoji}</span>
-              <span className={cn('text-[10px] sm:text-[9px] text-center leading-tight font-medium', category === cat.id ? 'text-slate-900 dark:text-white' : '')}>
+              <span className="text-[19px] leading-none">{cat.emoji}</span>
+              <span className={cn('text-[10px] text-center leading-tight font-medium', category === cat.id ? 'text-slate-900 dark:text-white' : '')}>
                 {cat.name}
               </span>
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowCategoryPicker((current) => !current)}
+            className={cn(
+              'flex min-h-[78px] flex-col items-center justify-center gap-1 rounded-[18px] border border-dashed border-slate-300 bg-slate-50/70 px-2 py-2 text-slate-500 text-center transition-all hover:border-indigo-400/50 hover:text-indigo-500 dark:border-white/12 dark:bg-white/[0.03] dark:text-gray-400 dark:hover:border-indigo-500/40 dark:hover:text-indigo-300',
+              showCategoryPicker && 'border-indigo-400/60 text-indigo-500 dark:border-indigo-500/40 dark:text-indigo-300'
+            )}
+          >
+            <ChevronDown size={15} className={cn('transition-transform', showCategoryPicker && 'rotate-180')} />
+            <span className="text-[10px] font-medium leading-tight">
+              Выбор
+              <br />
+              категорий
+            </span>
+          </button>
         </div>
       </div>
 
       <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className={cn(inputBase, 'py-2.5 sm:py-3')} />
 
-      <div>
-        <p className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Счёт</p>
-        <AccountSelect accounts={activeAccounts} value={accountId} onChange={setAccountId} />
+      <div className="grid grid-cols-4 gap-1.5 xl:gap-2">
+        {activeAccounts.map((account) => (
+          <button
+            key={account.id}
+            type="button"
+            onClick={() => setAccountId(account.id)}
+            title={account.name}
+            aria-label={account.name}
+            className={cn(
+              'flex min-h-[58px] items-center justify-center rounded-[18px] border transition-all',
+              accountId === account.id
+                ? 'border-2 shadow-sm'
+                : 'border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-500 hover:border-slate-300 dark:hover:border-white/15'
+            )}
+            style={accountId === account.id ? { borderColor: account.color, background: `${account.color}15` } : {}}
+          >
+            <span className="text-[18px] leading-none" aria-hidden="true">{account.emoji}</span>
+          </button>
+        ))}
       </div>
 
       <button
@@ -447,15 +620,15 @@ function QuickAddForm() {
             <div>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {tags.map((tag) => (
-                  <span key={tag} className="flex items-center gap-1 bg-indigo-500/12 border border-indigo-500/25 text-indigo-600 dark:text-indigo-300 text-[12px] sm:text-xs px-2 py-0.5 rounded-lg">
+                  <span key={tag} className="flex items-center gap-1 bg-indigo-500/12 border border-indigo-500/25 text-indigo-600 dark:text-indigo-300 text-[12px] sm:text-xs px-2 py-0.5 rounded-xl">
                     <Tag size={9} />{tag}
                     <button type="button" onClick={() => setTags(tags.filter((t) => t !== tag))}><X size={9} /></button>
                   </span>
                 ))}
               </div>
               <div className="flex flex-wrap gap-1 mb-2">
-                {SUGGESTED_TAGS.filter((t) => !tags.includes(t)).slice(0, 4).map((tag) => (
-                  <button key={tag} type="button" onClick={() => addTag(tag)} className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-600 border border-slate-200 dark:border-white/8 px-2 py-0.5 rounded-lg hover:border-indigo-400/40 hover:text-indigo-500 transition-colors">
+                {TRANSACTION_SUGGESTED_TAGS.filter((t) => !tags.includes(t)).slice(0, 4).map((tag) => (
+                  <button key={tag} type="button" onClick={() => addTag(tag)} className="text-[12px] sm:text-xs text-slate-400 dark:text-gray-600 border border-slate-200 dark:border-white/8 px-2 py-0.5 rounded-xl hover:border-indigo-400/40 hover:text-indigo-500 transition-colors">
                     +{tag}
                   </button>
                 ))}
@@ -523,7 +696,7 @@ export function HomePage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3 md:p-5 lg:sticky lg:top-[96px]"
+          className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3 md:p-5 xl:p-6 lg:sticky lg:top-[96px] xl:top-[104px]"
         >
           <QuickAddForm />
         </motion.div>

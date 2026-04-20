@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, Edit2, Check, X, Trophy } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
+import { HOME_GOAL_STORAGE_KEY } from '@/lib/app-constants'
 import { formatCurrency, cn } from '@/lib/utils'
 import { Goal } from '@/types'
 import { StatStrip, EmptyState, FormCard, Btn, IconBtn, FieldLabel, inputCls, PageHeader } from '@/components/ui'
 
 const GOAL_EMOJIS = ['🏖️', '🚗', '🏠', '💻', '✈️', '🎓', '💍', '🏋️', '📱', '🎸', '⛵', '🌍']
 const GOAL_COLORS = ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#f97316']
-const HOME_GOAL_KEY = 'tergam-home-goal-id'
-
 function GoalCard({
   goal,
   onEdit,
@@ -45,7 +44,7 @@ function GoalCard({
     >
       <div className="flex items-start justify-between mb-4 gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: `${goal.color}18` }}>
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[22px] text-2xl" style={{ background: `${goal.color}18` }}>
             {goal.emoji}
           </div>
           <div className="min-w-0">
@@ -55,24 +54,24 @@ function GoalCard({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 flex-shrink-0">
           <Btn variant={isHomeGoal ? 'primary' : 'secondary'} size="sm" onClick={onSetHomeGoal}>
             {isHomeGoal ? 'На главной' : 'Показать'}
           </Btn>
-          <IconBtn variant="primary" onClick={onEdit}><Edit2 size={12} /></IconBtn>
-          <IconBtn variant="danger" onClick={() => deleteGoal(goal.id)}><Trash2 size={12} /></IconBtn>
+          <IconBtn variant="primary" onClick={onEdit}><Edit2 size={14} /></IconBtn>
+          <IconBtn variant="danger" onClick={() => deleteGoal(goal.id)}><Trash2 size={14} /></IconBtn>
         </div>
       </div>
 
       <div className="flex items-end justify-between mb-2">
         <div>
-          <div className="text-[10px] text-slate-400 dark:text-gray-500 mb-0.5">Накоплено</div>
+          <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-0.5">Накоплено</div>
           <div className="text-base font-bold text-slate-900 dark:text-white">
             {formatCurrency(goal.savedAmount, settings.currency)}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] text-slate-400 dark:text-gray-500 mb-0.5">Цель</div>
+          <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-0.5">Цель</div>
           <div className="text-base font-bold text-slate-900 dark:text-white">
             {formatCurrency(goal.targetAmount, settings.currency)}
           </div>
@@ -109,7 +108,7 @@ function GoalCard({
                 onChange={(e) => setDepositInput(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={(e) => e.key === 'Enter' && handleDeposit()}
                 placeholder="Сумма пополнения"
-                className="flex-1 bg-slate-50 dark:bg-[#0a0a0f] border border-slate-200 dark:border-white/8 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400/60 placeholder-slate-300 dark:placeholder-gray-600"
+                className={cn(inputCls, 'min-w-0 flex-1')}
               />
               <IconBtn variant="primary" onClick={handleDeposit}><Check size={14} /></IconBtn>
               <IconBtn variant="secondary" onClick={() => setDepositing(false)}><X size={14} /></IconBtn>
@@ -120,7 +119,7 @@ function GoalCard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               onClick={() => setDepositing(true)}
-              className="w-full py-2 rounded-xl border border-dashed text-xs font-medium transition-all hover:opacity-80 active:scale-[0.98]"
+              className="w-full min-h-11 rounded-2xl border border-dashed px-4 py-2 text-sm font-semibold transition-all hover:opacity-80 active:scale-[0.98]"
               style={{ borderColor: `${goal.color}60`, color: goal.color, background: `${goal.color}08` }}
             >
               + Пополнить
@@ -161,7 +160,7 @@ function GoalForm({ editing, onClose }: { editing?: Goal; onClose: () => void })
                 type="button"
                 onClick={() => setEmoji(e)}
                 className={cn(
-                  'w-10 h-10 rounded-xl text-xl transition-all',
+                  'flex h-11 w-11 items-center justify-center rounded-2xl text-xl transition-all',
                   emoji === e
                     ? 'bg-indigo-500/20 border-2 border-indigo-500/50 shadow-sm'
                     : 'bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-transparent'
@@ -225,7 +224,7 @@ export function GoalsPage() {
   const [homeGoalId, setHomeGoalId] = useState('')
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(HOME_GOAL_KEY) || ''
+    const saved = window.localStorage.getItem(HOME_GOAL_STORAGE_KEY) || ''
     if (goals.some((g) => g.id === saved)) {
       setHomeGoalId(saved)
       return
@@ -233,18 +232,18 @@ export function GoalsPage() {
     if (goals.length > 0) {
       const fallback = goals[0].id
       setHomeGoalId(fallback)
-      window.localStorage.setItem(HOME_GOAL_KEY, fallback)
+      window.localStorage.setItem(HOME_GOAL_STORAGE_KEY, fallback)
       return
     }
     setHomeGoalId('')
-    window.localStorage.removeItem(HOME_GOAL_KEY)
+    window.localStorage.removeItem(HOME_GOAL_STORAGE_KEY)
   }, [goals])
 
   const totalSaved = goals.reduce((s, g) => s + g.savedAmount, 0)
   const doneCount = goals.filter((g) => g.savedAmount >= g.targetAmount).length
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-4 py-2 sm:space-y-5">
       <PageHeader
         icon={Trophy}
         iconColor="#f59e0b"
@@ -279,7 +278,7 @@ export function GoalsPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {goals.map((goal) => (
             <GoalCard
               key={goal.id}
@@ -287,7 +286,7 @@ export function GoalsPage() {
               isHomeGoal={homeGoalId === goal.id}
               onSetHomeGoal={() => {
                 setHomeGoalId(goal.id)
-                window.localStorage.setItem(HOME_GOAL_KEY, goal.id)
+                window.localStorage.setItem(HOME_GOAL_STORAGE_KEY, goal.id)
               }}
               onEdit={() => { setEditGoal(goal); setShowForm(false) }}
             />

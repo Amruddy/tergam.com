@@ -6,6 +6,7 @@ import { Wallet, Trophy, RefreshCw, Landmark, ChevronRight, AlertTriangle } from
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
 import { formatCurrency, getMonthKey } from '@/lib/utils'
+import { SurfaceCard, SurfaceHeader } from './SurfaceCard'
 
 export function QuickTools() {
   const { accounts, budgets, goals, recurring, transactions, transfers, settings } = useTransactionStore()
@@ -67,29 +68,35 @@ export function QuickTools() {
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3">
-      {tools.map(({ href, icon: Icon, label, color, value, warn, sub }, i) => (
-        <motion.div key={href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
-          <Link href={href} className="group block bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3.5 sm:p-4 hover:border-slate-300 dark:hover:border-white/10 transition-all hover:shadow-md min-h-[120px] sm:min-h-0">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}15` }}>
-                  <Icon size={15} style={{ color }} />
+    <SurfaceCard delay={0.22} className="space-y-4">
+      <SurfaceHeader
+        title="Быстрый доступ"
+        subtitle="Ключевые разделы и состояние настроек без лишней перегрузки."
+      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {tools.map(({ href, icon: Icon, label, color, value, warn, sub }, i) => (
+          <motion.div key={href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
+            <Link href={href} className="group block rounded-2xl border border-slate-200/80 bg-slate-50/85 p-4 transition-all hover:border-slate-300 hover:bg-white dark:border-white/[0.06] dark:bg-white/[0.025] dark:hover:border-white/10 dark:hover:bg-white/[0.04]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: `${color}15` }}>
+                    <Icon size={16} style={{ color }} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] md:text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-gray-500">{label}</p>
+                    <p className={`mt-1 flex items-center gap-1 truncate text-sm font-semibold leading-tight ${warn ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>
+                      {warn && <AlertTriangle size={12} className="flex-shrink-0" />}
+                      <span className="truncate">{value}</span>
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-gray-500 line-clamp-2">{sub}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] sm:text-xs text-slate-400 dark:text-gray-500">{label}</p>
-                  <p className={`text-xs sm:text-sm font-semibold mt-0.5 ${warn ? 'text-red-500' : 'text-slate-900 dark:text-white'} flex items-center gap-1 leading-tight`}>
-                    {warn && <AlertTriangle size={12} />}
-                    {value}
-                  </p>
-                  <p className="text-[11px] sm:text-[11px] text-slate-400 dark:text-gray-600 mt-0.5 line-clamp-2 sm:truncate">{sub}</p>
-                </div>
+                <ChevronRight size={14} className="mt-1 flex-shrink-0 text-slate-300 transition-colors group-hover:text-slate-500 dark:text-gray-600 dark:group-hover:text-gray-400" />
               </div>
-              <ChevronRight size={13} className="text-slate-300 dark:text-gray-600 group-hover:text-slate-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0" />
-            </div>
-          </Link>
-        </motion.div>
-      ))}
-    </div>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+    </SurfaceCard>
   )
 }

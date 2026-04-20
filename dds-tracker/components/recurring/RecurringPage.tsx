@@ -38,14 +38,14 @@ function RecurringCard({ rec }: { rec: RecurringTransaction }) {
       )}
     >
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: `${cat.color}15` }}>
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-xl" style={{ background: `${cat.color}15` }}>
           {cat.emoji}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{rec.description || cat.name}</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0" style={{ background: `${cat.color}15`, color: cat.color }}>
+            <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0" style={{ background: `${cat.color}15`, color: cat.color }}>
               {FREQ_ICONS[rec.frequency]} {FREQ_LABELS[rec.frequency]}
             </span>
           </div>
@@ -66,7 +66,7 @@ function RecurringCard({ rec }: { rec: RecurringTransaction }) {
         <button
           onClick={() => updateRecurring(rec.id, { active: !rec.active })}
           className={cn(
-            'flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl transition-all',
+            'flex min-h-10 items-center gap-1.5 rounded-2xl px-3 py-1.5 text-xs font-semibold transition-all',
             rec.active
               ? 'bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/18'
               : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-gray-500 hover:bg-slate-200 dark:hover:bg-white/8'
@@ -139,7 +139,7 @@ function AddRecurringForm({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => setFrequency(f)}
                 className={cn(
-                  'flex-1 py-2.5 rounded-xl text-xs font-medium border transition-all',
+                  'min-h-[76px] rounded-[22px] border px-2 py-3 text-xs font-semibold transition-all',
                   frequency === f
                     ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 shadow-sm'
                     : 'border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-500 hover:border-slate-300 dark:hover:border-white/15'
@@ -180,7 +180,7 @@ export function RecurringPage() {
   const paused = recurring.filter((r) => !r.active)
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-4 py-2 sm:space-y-5">
       <PageHeader
         icon={RefreshCw}
         iconColor="#22c55e"

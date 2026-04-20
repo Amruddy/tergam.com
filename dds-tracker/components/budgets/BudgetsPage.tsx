@@ -35,7 +35,7 @@ function BudgetCard({ budget, spent }: { budget: Budget; spent: number }) {
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: `${cat.color}15` }}>
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl text-xl" style={{ background: `${cat.color}15` }}>
             {cat.emoji}
           </div>
           <div>
@@ -45,18 +45,18 @@ function BudgetCard({ budget, spent }: { budget: Budget; spent: number }) {
         </div>
         <div className="flex items-center gap-2">
           {over && <AlertTriangle size={14} className="text-red-500" />}
-          <IconBtn variant="danger" onClick={() => deleteBudget(budget.id)}><Trash2 size={12} /></IconBtn>
+          <IconBtn variant="danger" onClick={() => deleteBudget(budget.id)}><Trash2 size={14} /></IconBtn>
         </div>
       </div>
 
       {/* Amounts */}
       <div className="flex items-end justify-between mb-2">
         <div>
-          <div className="text-[10px] text-slate-400 dark:text-gray-500 mb-0.5">Потрачено</div>
+          <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-0.5">Потрачено</div>
           <div className={cn('text-base font-bold', amountColor)}>{formatCurrency(spent, settings.currency)}</div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] text-slate-400 dark:text-gray-500 mb-0.5">Лимит</div>
+          <div className="text-[11px] text-slate-400 dark:text-gray-500 mb-0.5">Лимит</div>
           <div className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(budget.amount, settings.currency)}</div>
         </div>
       </div>
@@ -153,7 +153,7 @@ export function BudgetsPage() {
   const overCount = budgets.filter((b) => (spentByCategory[b.category] || 0) > b.amount).length
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-4 py-2 sm:space-y-5">
       <PageHeader
         icon={Wallet}
         iconColor="#6366f1"
@@ -186,7 +186,7 @@ export function BudgetsPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {budgets.map((budget) => (
             <BudgetCard key={budget.id} budget={budget} spent={spentByCategory[budget.category] || 0} />
           ))}

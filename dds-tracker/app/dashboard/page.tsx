@@ -18,14 +18,14 @@ const RecentTransactions = dynamic(() => import('@/components/dashboard/RecentTr
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-4 py-2 sm:space-y-5">
       <StatsCards />
       <QuickTools />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RevenueAreaChart />
         <CategoryBarChart />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ExpenseDonutChart />
         <BalanceLineChart />
       </div>

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Transaction } from '@/types'
 import { PageHeader } from '@/components/ui'
+import { SurfaceCard } from '@/components/dashboard/SurfaceCard'
 
 // ── Types & constants ─────────────────────────────────────────────────────────
 
@@ -143,12 +144,13 @@ function DowTooltip({ active, payload, label }: any) {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function KpiCard({
-  label, value, sub, icon: Icon, color, change, changeInverted, delay,
+  label, value, sub, icon: Icon, color, change, changeInverted, delay, emphasis = 'secondary',
 }: {
   label: string; value: string; sub: string
   icon: React.ElementType; color: string
   change: number | null; changeInverted?: boolean
   delay?: number
+  emphasis?: 'primary' | 'secondary'
 }) {
   const isPositiveChange = changeInverted ? (change ?? 0) < 0 : (change ?? 0) > 0
   return (
@@ -156,11 +158,11 @@ function KpiCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: delay ?? 0 }}
-      className="bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl p-3.5 space-y-2.5 transition-colors duration-300"
+      className={`rounded-[22px] border border-slate-200/80 bg-white p-3.5 shadow-[0_8px_30px_rgba(15,23,42,0.04)] transition-colors duration-300 dark:border-white/[0.06] dark:bg-[#13131a] ${emphasis === 'primary' ? 'col-span-2 xl:col-span-1' : ''}`}
     >
-      <div className="flex items-start justify-between">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
-          <Icon size={13} style={{ color }} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: `${color}18` }}>
+          <Icon size={14} style={{ color }} />
         </div>
         {change !== null && (
           <span className={`flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
@@ -173,8 +175,8 @@ function KpiCard({
       </div>
       <div>
         <div className="text-[10px] text-slate-400 dark:text-gray-500 leading-tight">{label}</div>
-        <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">{value}</div>
-        <div className="text-[10px] text-slate-400 dark:text-gray-600 mt-0.5">{sub}</div>
+        <div className={`mt-1 truncate font-bold leading-tight text-slate-900 dark:text-white ${emphasis === 'primary' ? 'text-lg' : 'text-base'}`}>{value}</div>
+        <div className="mt-1 text-[10px] leading-relaxed text-slate-400 dark:text-gray-600">{sub}</div>
       </div>
     </motion.div>
   )
@@ -182,14 +184,9 @@ function KpiCard({
 
 function SectionCard({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className={`bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl p-4 md:p-5 transition-colors duration-300 ${className}`}
-    >
+    <SurfaceCard delay={delay} className={className}>
       {children}
-    </motion.div>
+    </SurfaceCard>
   )
 }
 
@@ -342,7 +339,7 @@ export function AnalyticsContent() {
   const savingsSub = data.savingsRate >= 20 ? 'Отличная норма' : data.savingsRate >= 10 ? 'Средняя норма' : 'Низкая норма'
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-4 py-2 sm:space-y-5">
 
       {/* ── Header + period selector ── */}
       <PageHeader
@@ -353,12 +350,12 @@ export function AnalyticsContent() {
       />
 
       {/* ── Period selector ── */}
-      <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#13131a] rounded-xl p-1 w-fit border border-slate-200 dark:border-white/[0.06]">
+      <div className="flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-white/[0.06] dark:bg-[#13131a] sm:w-fit lg:gap-1.5 lg:p-1.5">
         {PERIOD_OPTIONS.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setPeriod(opt.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-medium transition-all ${
               period === opt.value
                 ? 'bg-white dark:bg-[#1e1e2e] text-slate-900 dark:text-white shadow-sm'
                 : 'text-slate-500 dark:text-gray-500 hover:text-slate-700 dark:hover:text-gray-300'
@@ -370,7 +367,7 @@ export function AnalyticsContent() {
       </div>
 
       {/* ── KPI cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
         <KpiCard delay={0} label="Доходы" value={formatCurrency(data.income, settings.currency)}
           sub={data.incomeChange !== null ? `Пред. период: ${data.incomeChange > 0 ? '+' : ''}${data.incomeChange}%` : 'За всё время'}
           icon={TrendingUp} color="#22c55e"
@@ -384,7 +381,7 @@ export function AnalyticsContent() {
         <KpiCard delay={0.1} label="Баланс" value={formatCurrency(data.balance, settings.currency)}
           sub={data.balance >= 0 ? 'Положительный' : 'Отрицательный'}
           icon={Wallet} color={data.balance >= 0 ? '#22c55e' : '#ef4444'}
-          change={null}
+          change={null} emphasis="primary"
         />
         <KpiCard delay={0.15} label="Норма сбережений" value={`${data.savingsRate}%`}
           sub={savingsSub}
@@ -421,8 +418,8 @@ export function AnalyticsContent() {
             </div>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={210}>
-          <AreaChart data={data.monthlyChart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={data.monthlyChart} margin={{ top: 5, right: 6, left: -16, bottom: 0 }}>
             <defs>
               <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#22c55e" stopOpacity={0.25} />
@@ -436,7 +433,7 @@ export function AnalyticsContent() {
             <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
             <XAxis dataKey="month" tick={{ fill: ct.tick, fontSize: 10 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: ct.tick, fontSize: 10 }} axisLine={false} tickLine={false}
-              tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={30} />
+              tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={28} />
             <Tooltip content={<CashflowTooltip />} cursor={{ stroke: ct.grid, strokeWidth: 1 }} />
             <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2}
               fill="url(#incomeGrad)" dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: '#22c55e' }} />
@@ -447,10 +444,10 @@ export function AnalyticsContent() {
       </SectionCard>
 
       {/* ── Expense categories + Day of week ── */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
 
         {/* Expense categories */}
-        <SectionCard delay={0.35} className="md:col-span-3">
+        <SectionCard delay={0.35} className="xl:col-span-3">
           <h3 className="text-slate-900 dark:text-white font-semibold text-sm md:text-base mb-0.5">Расходы по категориям</h3>
           <p className="text-slate-400 dark:text-gray-500 text-xs mb-4">% от суммы всех расходов за период</p>
           {data.topExpenseCategories.length === 0 ? (
@@ -468,15 +465,15 @@ export function AnalyticsContent() {
         </SectionCard>
 
         {/* Day of week */}
-        <SectionCard delay={0.4} className="md:col-span-2">
+        <SectionCard delay={0.4} className="xl:col-span-2">
           <h3 className="text-slate-900 dark:text-white font-semibold text-sm md:text-base mb-0.5">По дням недели</h3>
           <p className="text-slate-400 dark:text-gray-500 text-xs mb-4">Сумма расходов по дням</p>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={data.dowChart} margin={{ top: 0, right: 5, left: -25, bottom: 0 }} layout="vertical">
+            <BarChart data={data.dowChart} margin={{ top: 0, right: 6, left: -18, bottom: 0 }} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
               <XAxis type="number" tick={{ fill: ct.tick, fontSize: 9 }} axisLine={false} tickLine={false}
                 tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <YAxis type="category" dataKey="name" tick={{ fill: ct.tick, fontSize: 11 }} axisLine={false} tickLine={false} width={22} />
+              <YAxis type="category" dataKey="name" tick={{ fill: ct.tick, fontSize: 11 }} axisLine={false} tickLine={false} width={20} />
               <Tooltip content={<DowTooltip />} cursor={{ fill: ct.isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }} />
               <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                 {data.dowChart.map((entry, i) => (
@@ -489,7 +486,7 @@ export function AnalyticsContent() {
       </div>
 
       {/* ── Income sources + Tags ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
 
         {/* Income sources */}
         <SectionCard delay={0.5}>
@@ -513,7 +510,7 @@ export function AnalyticsContent() {
         <SectionCard delay={0.55}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
-              <Tag size={13} className="text-indigo-500" />
+              <Tag size={14} className="text-indigo-500" />
             </div>
             <div>
               <h3 className="text-slate-900 dark:text-white font-semibold text-sm md:text-base">Теги</h3>

@@ -1,0 +1,3 @@
+Changed: added a reusable spec-check workflow, a spec-reviewer mission, and repository rules for AI agents.
+Checked: confirmed the workflow requires request restatement, dependency scrutiny, and explicit verification reporting; no new runtime dependency was added.
+Risk: none

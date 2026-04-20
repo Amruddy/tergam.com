@@ -7,45 +7,68 @@ interface ParsedQuick {
   description: string
 }
 
-// keyword → category id
 const CATEGORY_KEYWORDS: [string[], string, TransactionType | 'both'][] = [
   [['еда', 'кофе', 'ресторан', 'кафе', 'продукты', 'обед', 'ужин', 'завтрак', 'пицца', 'суши', 'бургер'], 'food', 'expense'],
   [['такси', 'метро', 'автобус', 'транспорт', 'бензин', 'парковка', 'убер', 'яндекс'], 'transport', 'expense'],
   [['аптека', 'врач', 'здоровье', 'больница', 'стоматолог', 'медицина'], 'health', 'expense'],
   [['кино', 'игры', 'развлечения', 'концерт', 'театр', 'клуб', 'бар', 'досуг'], 'entertainment', 'expense'],
   [['одежда', 'обувь', 'магазин', 'шопинг'], 'clothes', 'expense'],
-  [['аренда', 'коммунальные', 'квартира', 'жкх', 'свет', 'газ', 'вода', 'интернет'], 'utilities', 'expense'],
+  [['аренда', 'квартира', 'съем', 'съём', 'жилье', 'жильё'], 'rent', 'expense'],
+  [['коммунальные', 'жкх', 'свет', 'газ', 'вода', 'интернет'], 'utilities', 'expense'],
   [['зарплата', 'зп', 'оклад', 'работа'], 'salary', 'income'],
   [['фриланс', 'проект', 'заказ', 'подработка'], 'freelance', 'income'],
   [['дивиденды', 'акции', 'инвестиции', 'биржа'], 'investments', 'both'],
 ]
 
+const INCOME_HINTS = ['получил', 'получила', 'пришло', 'заработал', 'заработала', 'доход', 'поступление', 'плюс']
+const EXPENSE_HINTS = ['потратил', 'потратила', 'купил', 'купила', 'оплатил', 'оплатила', 'расход', 'минус']
+
+function detectType(text: string): TransactionType {
+  if (text.startsWith('+')) return 'income'
+  if (text.startsWith('-')) return 'expense'
+  if (INCOME_HINTS.some((hint) => text.includes(hint))) return 'income'
+  if (EXPENSE_HINTS.some((hint) => text.includes(hint))) return 'expense'
+  return 'expense'
+}
+
+function normalizeNumberString(value: string): string {
+  const compact = value.replace(/\s/g, '')
+
+  // Treat dots between 3-digit groups as thousand separators: 50.000 -> 50000
+  if (/^\d{1,3}(\.\d{3})+$/.test(compact)) {
+    return compact.replace(/\./g, '')
+  }
+
+  // Treat commas between 3-digit groups as thousand separators: 50,000 -> 50000
+  if (/^\d{1,3}(,\d{3})+$/.test(compact)) {
+    return compact.replace(/,/g, '')
+  }
+
+  return compact.replace(',', '.')
+}
+
 export function parseQuickInput(raw: string): ParsedQuick {
-  const text = raw.trim().toLowerCase()
+  const original = raw.trim()
+  const text = original.toLowerCase()
+  let type = detectType(text)
+  const cleaned = text.replace(/^[+-]\s*/, '').trim()
 
-  // detect explicit type sign
-  let type: TransactionType = 'expense'
-  let cleaned = text
-  if (text.startsWith('+')) { type = 'income'; cleaned = text.slice(1).trim() }
-  else if (text.startsWith('-')) { type = 'expense'; cleaned = text.slice(1).trim() }
-
-  // extract number
   const numMatch = cleaned.match(/[\d\s]+([.,]\d+)?/)
   let amount: number | null = null
   let description = cleaned
+
   if (numMatch) {
-    const numStr = numMatch[0].replace(/\s/g, '').replace(',', '.')
+    const numStr = normalizeNumberString(numMatch[0])
     amount = parseFloat(numStr)
-    if (isNaN(amount)) amount = null
+    if (Number.isNaN(amount)) amount = null
     description = cleaned.replace(numMatch[0], '').trim()
   }
 
-  // detect category from keywords
   let category = 'other'
   for (const [keywords, catId, catType] of CATEGORY_KEYWORDS) {
     if (keywords.some((kw) => cleaned.includes(kw))) {
       category = catId
-      if (catType !== 'both') type = catType as TransactionType
+      if (catType !== 'both') type = catType
       break
     }
   }
@@ -54,6 +77,6 @@ export function parseQuickInput(raw: string): ParsedQuick {
     amount,
     type,
     category,
-    description: description || raw.trim(),
+    description: description || original,
   }
 }

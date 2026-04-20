@@ -22,20 +22,6 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-@media (min-width: 768px) {
-  body {
-    background-image:
-      radial-gradient(circle at top left, rgba(99, 102, 241, 0.08), transparent 24rem),
-      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-    background-attachment: fixed;
-  }
-
-  .dark body {
-    background-image: none;
-    background-color: #0f172a;
-  }
-
-}
 
 /* Dark scrollbar */
 .dark ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -109,25 +95,4 @@ button {
   .desktop-shell {
     position: relative;
   }
-
-  @media (min-width: 768px) {
-    .desktop-shell::before {
-      content: '';
-      position: fixed;
-      inset: 84px 14px 14px;
-      border-radius: 22px;
-      background: rgba(255, 255, 255, 0.46);
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      box-shadow:
-        0 16px 48px rgba(15, 23, 42, 0.06);
-      backdrop-filter: blur(10px);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .dark .desktop-shell::before {
-      content: none;
-    }
-  }
-
 }
