@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { useTransactionStore } from '@/store/useTransactionStore'
@@ -18,10 +17,7 @@ export function RecentTransactions() {
   )
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.7, duration: 0.4 }}
+    <div
       className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-6 transition-colors duration-300"
     >
       <div className="flex items-center justify-between mb-5">
@@ -35,15 +31,12 @@ export function RecentTransactions() {
       </div>
 
       <div className="space-y-1">
-        {recent.map((tx, i) => {
+        {recent.map((tx) => {
           const cat = getCategoryById(tx.category)
           const account = getAccountById(accounts, tx.accountId)
           return (
-            <motion.div
+            <div
               key={tx.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7 + i * 0.04 }}
               className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/3 transition-colors"
             >
               <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0" style={{ background: `${cat.color}15`, border: `1px solid ${cat.color}25` }}>
@@ -68,11 +61,11 @@ export function RecentTransactions() {
                 </div>
                 <div className="text-xs text-slate-400 dark:text-gray-600 mt-0.5">{formatDate(tx.date)}</div>
               </div>
-            </motion.div>
+            </div>
           )
         })}
         {recent.length === 0 && <div className="text-center py-8 text-slate-400 dark:text-gray-600 text-sm">Нет транзакций</div>}
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { Wallet, Trophy, RefreshCw, Landmark, ChevronRight, AlertTriangle } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
@@ -68,8 +67,8 @@ export function QuickTools() {
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3">
-      {tools.map(({ href, icon: Icon, label, color, value, warn, sub }, i) => (
-        <motion.div key={href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
+      {tools.map(({ href, icon: Icon, label, color, value, warn, sub }) => (
+        <div key={href}>
           <Link href={href} className="group block bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-3.5 sm:p-4 hover:border-slate-300 dark:hover:border-white/10 transition-all hover:shadow-md min-h-[120px] sm:min-h-0">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -88,7 +87,7 @@ export function QuickTools() {
               <ChevronRight size={13} className="text-slate-300 dark:text-gray-600 group-hover:text-slate-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0" />
             </div>
           </Link>
-        </motion.div>
+        </div>
       ))}
     </div>
   )

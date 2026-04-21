@@ -1,17 +1,20 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { Home, LayoutDashboard, ArrowLeftRight, BarChart3, Landmark, Sun, Moon, UserRound } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { Logo } from '@/components/Logo'
-import { UserProfileModal } from '@/components/UserProfileModal'
 import { getSupabase } from '@/lib/supabase'
 import { getAuthUser } from '@/lib/auth'
+
+const UserProfileModal = dynamic(() => import('@/components/UserProfileModal').then((mod) => mod.UserProfileModal), {
+  loading: () => <div className="h-[420px] rounded-2xl bg-white dark:bg-[#13131a]" />,
+})
 
 const NAV_ITEMS = [
   { href: '/', label: 'Главная', icon: Home },
@@ -88,7 +91,7 @@ export function Navbar() {
                   active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                 )}
               >
-                {active && <motion.div layoutId="nav-pill" className="absolute inset-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800" transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }} />}
+                {active && <div className="absolute inset-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800" />}
                 <Icon size={15} className="relative z-10" />
                 <span className="relative z-10">{label}</span>
               </Link>
@@ -135,20 +138,18 @@ export function Navbar() {
         </button>
       </div>
 
-      <AnimatePresence>
-        {showProfile && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowProfile(false)}>
-            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-              <UserProfileModal
-                onClose={() => setShowProfile(false)}
-                isAuthenticated={Boolean(authUser)}
-                authEmail={authUser?.email ?? ''}
-                onAuthSuccess={bootstrap}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showProfile && (
+        <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowProfile(false)}>
+          <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <UserProfileModal
+              onClose={() => setShowProfile(false)}
+              isAuthenticated={Boolean(authUser)}
+              authEmail={authUser?.email ?? ''}
+              onAuthSuccess={bootstrap}
+            />
+          </div>
+        </div>
+      )}
     </header>
   )
 }

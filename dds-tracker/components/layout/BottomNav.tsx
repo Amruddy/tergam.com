@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, LayoutDashboard, ArrowLeftRight, BarChart3, Landmark } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -25,7 +24,7 @@ export function BottomNav() {
             const active = pathname === href
             return (
               <Link key={href} href={href} className="flex-1 flex flex-col items-center justify-center gap-1.5 relative rounded-2xl">
-                {active && <motion.div layoutId="bottom-pill" className="absolute top-2 w-11 h-11 rounded-2xl bg-indigo-500/12 dark:bg-indigo-500/20" transition={{ type: 'spring', bounce: 0.25, duration: 0.4 }} />}
+                {active && <div className="absolute top-2 w-11 h-11 rounded-2xl bg-indigo-500/12 dark:bg-indigo-500/20" />}
                 <Icon size={20} className={cn('relative z-10 transition-colors', active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-gray-500')} />
                 <span className={cn('text-[10px] font-semibold relative z-10 transition-colors', active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-gray-500')}>
                   {label}

@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
@@ -8,19 +7,16 @@ import { formatCurrency, getMonthKey, getChangePercent } from '@/lib/utils'
 import { useMemo } from 'react'
 
 function StatCard({
-  label, amount, change, icon: Icon, color, glowClass, index,
+  label, amount, change, icon: Icon, color, glowClass,
 }: {
   label: string; amount: number; change: number; icon: React.ElementType
-  color: string; glowClass: string; index: number
+  color: string; glowClass: string
 }) {
   const { settings } = useTransactionStore()
   const isPositiveChange = change >= 0
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.4 }}
+    <div
       className={`relative min-w-0 bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/[0.06] rounded-2xl px-2.5 py-3 sm:px-3 md:p-6 overflow-hidden transition-colors duration-300 ${glowClass}`}
     >
       <div className="relative z-10">
@@ -42,7 +38,7 @@ function StatCard({
         </div>
         <div className="text-xs text-slate-400 dark:text-gray-600 mt-1 hidden md:block">vs прошлый месяц</div>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -73,11 +69,11 @@ export function StatsCards() {
 
   return (
     <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-4">
-      <StatCard index={0} label="Доходы" amount={stats.income} change={stats.incomeChange}
+      <StatCard label="Доходы" amount={stats.income} change={stats.incomeChange}
         icon={TrendingUp} color="#22c55e" glowClass="glow-green" />
-      <StatCard index={1} label="Расходы" amount={stats.expense} change={-stats.expenseChange}
+      <StatCard label="Расходы" amount={stats.expense} change={-stats.expenseChange}
         icon={TrendingDown} color="#ef4444" glowClass="glow-red" />
-      <StatCard index={2} label="Баланс" amount={stats.balance} change={stats.balanceChange}
+      <StatCard label="Баланс" amount={stats.balance} change={stats.balanceChange}
         icon={Wallet} color="#6366f1" glowClass="glow-indigo" />
     </div>
   )
