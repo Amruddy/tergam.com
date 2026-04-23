@@ -4,11 +4,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   TrendingUp, TrendingDown, Wallet, Plus, Check,
-  Tag, X, ArrowRight, ChevronDown, ChevronUp, Zap, Mic, Square,
+  Tag, X, ArrowRight, ChevronDown, ChevronUp, Zap, Mic, Square, SlidersHorizontal,
 } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
-import { CATEGORIES, getCategoryById } from '@/lib/categories'
+import { getCategoriesByType, getCategoryById } from '@/lib/categories'
 import { getDefaultAccountId } from '@/lib/accounts'
 import { formatCurrency, getMonthKey, cn } from '@/lib/utils'
 import { parseQuickInput } from '@/lib/parseQuick'
@@ -17,6 +17,9 @@ import { AccountSelect } from '@/components/ui'
 
 const SUGGESTED_TAGS = ['работа', 'продукты', 'такси', 'жильё', 'досуг', 'здоровье']
 const HOME_GOAL_KEY = 'tergam-home-goal-id'
+const HOME_CATEGORY_PRESET_KEY = 'tergam-home-category-preset'
+const HOME_CATEGORY_LIMIT = 9
+const CUSTOM_CATEGORY_COLORS = ['#6366f1', '#ec4899', '#06b6d4', '#22c55e', '#f97316', '#eab308']
 
 type BrowserSpeechRecognition = {
   continuous: boolean
@@ -312,7 +315,7 @@ function HomeGoalCard() {
 }
 
 function QuickAddForm() {
-  const { accounts, addTransaction } = useTransactionStore()
+  const { accounts, addTransaction, addCustomCategory } = useTransactionStore()
   const activeAccounts = getActiveAccounts(accounts)
 
   const [type, setType] = useState<TransactionType>('expense')
@@ -325,13 +328,66 @@ function QuickAddForm() {
   const [tagInput, setTagInput] = useState('')
   const [showExtra, setShowExtra] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false)
+  const [showCustomCategoryForm, setShowCustomCategoryForm] = useState(false)
+  const [customCategoryName, setCustomCategoryName] = useState('')
+  const [customCategoryEmoji, setCustomCategoryEmoji] = useState('')
+  const [customCategoryColor, setCustomCategoryColor] = useState(CUSTOM_CATEGORY_COLORS[0])
+  const [preferredCategoryIds, setPreferredCategoryIds] = useState<Record<TransactionType, string[]>>({
+    expense: [],
+    income: [],
+  })
 
-  const availableCategories = CATEGORIES.filter((c) => c.type === type || c.type === 'both')
+  const availableCategories = getCategoriesByType(type)
+  const visibleCategories = useMemo(() => {
+    const preferredIds = preferredCategoryIds[type]
+    const preferred = preferredIds
+      .map((id) => availableCategories.find((cat) => cat.id === id))
+      .filter((cat): cat is NonNullable<typeof cat> => Boolean(cat))
+
+    if (preferred.length >= HOME_CATEGORY_LIMIT) return preferred.slice(0, HOME_CATEGORY_LIMIT)
+
+    const fallback = availableCategories.filter((cat) => !preferred.some((preferredCat) => preferredCat.id === cat.id))
+    return [...preferred, ...fallback].slice(0, HOME_CATEGORY_LIMIT)
+  }, [availableCategories, preferredCategoryIds, type])
+
   useEffect(() => {
     if (!accountId && activeAccounts.length > 0) {
       setAccountId(activeAccounts[0]?.id ?? getDefaultAccountId())
     }
   }, [activeAccounts, accountId])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const saved = window.localStorage.getItem(HOME_CATEGORY_PRESET_KEY)
+    if (!saved) {
+      setPreferredCategoryIds({
+        expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+        income: getCategoriesByType('income').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+      })
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(saved) as Partial<Record<TransactionType, string[]>>
+      setPreferredCategoryIds({
+        expense: Array.isArray(parsed.expense) ? parsed.expense : getCategoriesByType('expense').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+        income: Array.isArray(parsed.income) ? parsed.income : getCategoriesByType('income').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+      })
+    } catch {
+      setPreferredCategoryIds({
+        expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+        income: getCategoriesByType('income').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (preferredCategoryIds.expense.length === 0 && preferredCategoryIds.income.length === 0) return
+    window.localStorage.setItem(HOME_CATEGORY_PRESET_KEY, JSON.stringify(preferredCategoryIds))
+  }, [preferredCategoryIds])
+
   const handleAmountChange = (v: string) => setAmount(v.replace(/[^\d]/g, ''))
   const formatDisplay = (v: string) => (v ? Number(v).toLocaleString('ru-RU') : '')
   const addTag = (tag: string) => {
@@ -346,6 +402,49 @@ function QuickAddForm() {
     setTags([])
     setDate(new Date().toISOString().split('T')[0])
     setShowExtra(false)
+  }
+
+  const togglePreferredCategory = (categoryId: string) => {
+    setPreferredCategoryIds((current) => {
+      const currentIds = current[type]
+      const isSelected = currentIds.includes(categoryId)
+
+      if (isSelected) {
+        return {
+          ...current,
+          [type]: currentIds.filter((id) => id !== categoryId),
+        }
+      }
+
+      if (currentIds.length >= HOME_CATEGORY_LIMIT) return current
+
+      return {
+        ...current,
+        [type]: [...currentIds, categoryId],
+      }
+    })
+  }
+
+  const handleCreateCustomCategory = () => {
+    const name = customCategoryName.trim()
+    if (!name) return
+
+    const nextCategory = addCustomCategory({
+      name,
+      emoji: customCategoryEmoji.trim() || '✨',
+      color: customCategoryColor,
+      type,
+    })
+
+    setCategory(nextCategory.id)
+    setPreferredCategoryIds((current) => ({
+      ...current,
+      [type]: [nextCategory.id, ...current[type].filter((id) => id !== nextCategory.id)].slice(0, HOME_CATEGORY_LIMIT),
+    }))
+    setShowCustomCategoryForm(false)
+    setCustomCategoryName('')
+    setCustomCategoryEmoji('')
+    setCustomCategoryColor(CUSTOM_CATEGORY_COLORS[0])
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -395,8 +494,8 @@ function QuickAddForm() {
 
       <div>
         <p className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Категория</p>
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
-          {availableCategories.map((cat) => (
+        <div className="grid grid-cols-5 gap-1.5">
+          {visibleCategories.map((cat) => (
             <button
               key={cat.id}
               type="button"
@@ -409,13 +508,180 @@ function QuickAddForm() {
               )}
               style={category === cat.id ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
             >
-              <span className="text-[14px] sm:text-[16px] leading-none">{cat.emoji}</span>
-              <span className={cn('text-[10px] sm:text-[9px] text-center leading-tight font-medium', category === cat.id ? 'text-slate-900 dark:text-white' : '')}>
+              <span className="flex h-7 w-7 items-center justify-center text-[17px] leading-none sm:h-8 sm:w-8 sm:text-[18px]">{cat.emoji}</span>
+              <span className={cn('min-h-[24px] max-w-full overflow-hidden break-words text-[9px] sm:text-[9px] text-center leading-[1.15] font-medium', category === cat.id ? 'text-slate-900 dark:text-white' : '')}>
                 {cat.name}
               </span>
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowCategoryPicker((value) => !value)}
+            className={cn(
+              'flex flex-col items-center justify-center gap-1 p-1.5 sm:p-2 rounded-xl border border-dashed transition-all h-full min-h-[66px] sm:min-h-[72px]',
+              showCategoryPicker
+                ? 'border-indigo-400 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300'
+                : 'border-slate-300 dark:border-white/10 text-slate-500 dark:text-gray-500 hover:border-indigo-400/50 hover:text-indigo-500'
+            )}
+          >
+            <span className="w-7 h-7 rounded-full bg-indigo-500/12 flex items-center justify-center">
+              <SlidersHorizontal size={14} />
+            </span>
+            <span className="min-h-[24px] max-w-full overflow-hidden break-words text-[9px] sm:text-[9px] text-center leading-[1.15] font-medium">Выбрать</span>
+          </button>
         </div>
+        <AnimatePresence initial={false}>
+          {showCategoryPicker && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-2 rounded-2xl border border-slate-200 dark:border-white/8 bg-slate-50/80 dark:bg-[#0d0d14] p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">Быстрые категории</p>
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Выбрано {preferredCategoryIds[type].length} из {HOME_CATEGORY_LIMIT}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPreferredCategoryIds((current) => ({
+                      ...current,
+                      [type]: availableCategories.slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+                    }))}
+                    className="text-xs text-indigo-500 hover:text-indigo-600 transition-colors"
+                  >
+                    Сбросить
+                  </button>
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-white/8 bg-white/70 dark:bg-white/[0.03] px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">Своя категория</p>
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Скрыта на главной и доступна только здесь</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomCategoryForm((value) => !value)}
+                    className={cn(
+                      'inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors',
+                      showCustomCategoryForm
+                        ? 'bg-indigo-500 text-white'
+                        : 'border border-slate-200 dark:border-white/8 text-slate-600 dark:text-gray-300 hover:border-indigo-400/50 hover:text-indigo-500'
+                    )}
+                  >
+                    <Plus size={13} />
+                    Добавить
+                  </button>
+                </div>
+                <AnimatePresence initial={false}>
+                  {showCustomCategoryForm && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-2xl border border-slate-200 dark:border-white/8 bg-white/70 dark:bg-white/[0.03] p-3 space-y-3">
+                        <div className="grid grid-cols-[68px_minmax(0,1fr)] gap-2">
+                          <input
+                            type="text"
+                            value={customCategoryEmoji}
+                            onChange={(e) => setCustomCategoryEmoji(e.target.value)}
+                            maxLength={2}
+                            placeholder="Иконка"
+                            className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/8 rounded-xl px-2 py-2 text-center text-xs sm:text-sm focus:outline-none focus:border-indigo-400/60"
+                          />
+                          <input
+                            type="text"
+                            value={customCategoryName}
+                            onChange={(e) => setCustomCategoryName(e.target.value)}
+                            maxLength={20}
+                            placeholder="Название категории"
+                            className="bg-white dark:bg-[#13131a] border border-slate-200 dark:border-white/8 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-gray-700 focus:outline-none focus:border-indigo-400/60"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {CUSTOM_CATEGORY_COLORS.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => setCustomCategoryColor(color)}
+                              className={cn(
+                                'w-7 h-7 rounded-full border-2 transition-transform',
+                                customCategoryColor === color ? 'border-slate-900 dark:border-white scale-110' : 'border-transparent'
+                              )}
+                              style={{ backgroundColor: color }}
+                              aria-label={`Выбрать цвет ${color}`}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleCreateCustomCategory}
+                            disabled={!customCategoryName.trim()}
+                            className="flex-1 rounded-xl bg-indigo-500 text-white py-2 text-sm font-medium hover:bg-indigo-600 transition-colors disabled:opacity-40"
+                          >
+                            Добавить категорию
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomCategoryForm(false)}
+                            className="px-3 rounded-xl border border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {availableCategories.map((cat) => {
+                    const selectedForHome = preferredCategoryIds[type].includes(cat.id)
+                    const reachedLimit = !selectedForHome && preferredCategoryIds[type].length >= HOME_CATEGORY_LIMIT
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => togglePreferredCategory(cat.id)}
+                        disabled={reachedLimit}
+                        className={cn(
+                          'flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center transition-all',
+                          selectedForHome
+                            ? 'border-2 text-slate-900 dark:text-white shadow-sm'
+                            : 'border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-500 hover:border-slate-300 dark:hover:border-white/15',
+                          reachedLimit && 'opacity-40 cursor-not-allowed'
+                        )}
+                        style={selectedForHome ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
+                      >
+                        <span className="flex h-7 w-7 items-center justify-center text-[17px] leading-none sm:h-8 sm:w-8 sm:text-[18px]">{cat.emoji}</span>
+                        <span className="min-h-[24px] max-w-full overflow-hidden break-words text-[9px] leading-[1.15] font-medium">{cat.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoryPicker(false)}
+                    className="flex-1 rounded-xl bg-indigo-500 text-white py-2 text-sm font-medium hover:bg-indigo-600 transition-colors"
+                  >
+                    Готово
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoryPicker(false)}
+                    className="px-3 rounded-xl border border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className={cn(inputBase, 'py-2.5 sm:py-3')} />

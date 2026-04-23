@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import { Search, Trash2, Edit2, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, X, Download } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
-import { CATEGORIES, getCategoryById } from '@/lib/categories'
+import { getAllCategories, getCategoryById } from '@/lib/categories'
 import { getAccountById } from '@/lib/accounts'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { Transaction, TransactionType } from '@/types'
@@ -146,6 +146,7 @@ export function TransactionTable() {
     transactions.forEach((t) => t.tags.forEach((tag) => set.add(tag)))
     return Array.from(set).sort()
   }, [transactions])
+  const categoryOptions = useMemo(() => getAllCategories(), [transactions])
 
   const filtered = useMemo(() => {
     let list = [...transactions]
@@ -247,7 +248,7 @@ export function TransactionTable() {
           </div>
           <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setPage(1) }} className={cn(inputCls, 'px-2.5 py-1.5 text-xs')}>
             <option value="all">Все категории</option>
-            {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+            {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
           </select>
           <select value={filterAccount} onChange={(e) => { setFilterAccount(e.target.value); setPage(1) }} className={cn(inputCls, 'px-2.5 py-1.5 text-xs')}>
             <option value="all">Все счета</option>

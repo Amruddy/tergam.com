@@ -40,6 +40,7 @@ export interface Category {
   emoji: string
   color: string
   type: 'income' | 'expense' | 'both'
+  custom?: boolean
 }
 
 export type CurrencyCode = 'RUB' | 'USD' | 'EUR'

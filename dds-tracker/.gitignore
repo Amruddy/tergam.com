@@ -1,6 +1,9 @@
 node_modules/
 .next/
+.next-dev.log
+.next-dev.err.log
 out/
 .env*
+tsconfig.tsbuildinfo
 vault/**/.obsidian/
 
