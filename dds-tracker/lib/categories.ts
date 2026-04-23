@@ -1,4 +1,5 @@
-import { Category } from '@/types'
+import { useTransactionStore } from '@/store/useTransactionStore'
+import { Category, TransactionType } from '@/types'
 
 export const CATEGORIES: Category[] = [
   { id: 'food', name: 'Еда', emoji: '🍕', color: '#f97316', type: 'expense' },
@@ -23,8 +24,19 @@ export const CATEGORIES: Category[] = [
   { id: 'other', name: 'Прочее', emoji: '✨', color: '#94a3b8', type: 'both' },
 ]
 
-export const getCategoryById = (id: string): Category =>
-  CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1]
+export const getAllCategories = (): Category[] => {
+  const { customCategories = [] } = useTransactionStore.getState()
+  return [...CATEGORIES, ...customCategories]
+}
 
-export const EXPENSE_CATEGORIES = CATEGORIES.filter((c) => c.type === 'expense' || c.type === 'both')
-export const INCOME_CATEGORIES = CATEGORIES.filter((c) => c.type === 'income' || c.type === 'both')
+export const getCategoriesByType = (type?: TransactionType | 'all'): Category[] => {
+  const categories = getAllCategories()
+  if (!type || type === 'all') return categories
+  return categories.filter((category) => category.type === type || category.type === 'both')
+}
+
+export const getCategoryById = (id: string): Category =>
+  getAllCategories().find((category) => category.id === id) ?? CATEGORIES[CATEGORIES.length - 1]
+
+export const EXPENSE_CATEGORIES = () => getCategoriesByType('expense')
+export const INCOME_CATEGORIES = () => getCategoriesByType('income')

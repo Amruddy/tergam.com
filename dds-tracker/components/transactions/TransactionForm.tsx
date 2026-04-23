@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Tag, Check } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
-import { CATEGORIES } from '@/lib/categories'
+import { getCategoriesByType } from '@/lib/categories'
 import { getActiveAccounts, getDefaultAccountId } from '@/lib/accounts'
 import { cn } from '@/lib/utils'
 import { Transaction, TransactionType } from '@/types'
@@ -49,7 +49,7 @@ export function TransactionForm({ editingTx, onClose }: Props) {
     }
   }, [activeAccounts, accountId, editingTx])
 
-  const availableCategories = CATEGORIES.filter((c) => c.type === type || c.type === 'both')
+  const availableCategories = getCategoriesByType(type)
 
   const handleAmountChange = (v: string) => setAmount(v.replace(/[^\d]/g, ''))
   const formatDisplay = (v: string) => v ? Number(v).toLocaleString('ru-RU') : ''

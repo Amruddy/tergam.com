@@ -4,7 +4,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import {
   Transaction, Settings, Budget, Goal,
-  RecurringTransaction, Account, Transfer, UserProfile,
+  RecurringTransaction, Account, Transfer, UserProfile, Category,
 } from '@/types'
 import { generateId, getDayKey, getMonthKey } from '@/lib/utils'
 import { createDefaultAccounts, getDefaultAccountId, LEGACY_DEFAULT_ACCOUNT_IDS } from '@/lib/accounts'
@@ -91,6 +91,7 @@ interface TransactionStore {
   budgets: Budget[]
   goals: Goal[]
   recurring: RecurringTransaction[]
+  customCategories: Category[]
   profile: UserProfile
   settings: Settings
   initialized: boolean
@@ -120,6 +121,7 @@ interface TransactionStore {
   updateRecurring: (id: string, r: Partial<Omit<RecurringTransaction, 'id' | 'createdAt'>>) => void
   deleteRecurring: (id: string) => void
   applyRecurring: () => void
+  addCustomCategory: (category: Omit<Category, 'id' | 'custom'>) => Category
 
   updateSettings: (s: Partial<Settings>) => void
   updateProfile: (p: Partial<UserProfile>) => void
@@ -152,6 +154,7 @@ export const useTransactionStore = create<TransactionStore>()(
         budgets: [],
         goals: [],
         recurring: [],
+        customCategories: [],
         profile: defaultProfile(),
         settings: defaultSettings(),
         initialized: true,
@@ -166,6 +169,7 @@ export const useTransactionStore = create<TransactionStore>()(
         budgets: [],
         goals: [],
         recurring: [],
+        customCategories: [],
         profile: defaultProfile(),
         settings: defaultSettings(),
         initialized: false,
@@ -329,6 +333,16 @@ export const useTransactionStore = create<TransactionStore>()(
           }
         },
 
+        addCustomCategory: (category) => {
+          const newCategory: Category = {
+            ...category,
+            id: generateId(),
+            custom: true,
+          }
+          set((s) => ({ customCategories: [...s.customCategories, newCategory] }))
+          return newCategory
+        },
+
         updateSettings: (s) => {
           set((state) => ({ settings: { ...state.settings, ...s } }))
           const { settings, profile } = get()
@@ -378,6 +392,7 @@ export const useTransactionStore = create<TransactionStore>()(
               budgets: data.budgets,
               goals: data.goals,
               recurring: data.recurring,
+              customCategories: get().customCategories,
               settings: data.settings ?? get().settings,
               profile: data.profile ?? get().profile,
               supabaseLoaded: true,
@@ -398,7 +413,7 @@ export const useTransactionStore = create<TransactionStore>()(
     },
     {
       name: 'dds-tracker-store',
-      version: 5,
+      version: 6,
       migrate: (persistedState: any) => {
         const baseAccounts: Account[] = Array.isArray(persistedState?.accounts) && persistedState.accounts.length > 0
           ? persistedState.accounts.map((a: any) => ({ ...a, archived: a.archived ?? false }))
@@ -418,6 +433,7 @@ export const useTransactionStore = create<TransactionStore>()(
           accounts,
           supabaseLoaded: false,
           syncError: null,
+          customCategories: Array.isArray(persistedState?.customCategories) ? persistedState.customCategories : [],
           transfers,
           transactions: transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId })),
           recurring: recurring.map((rec: any) => ({ ...rec, accountId: rec.accountId || fallbackId })),

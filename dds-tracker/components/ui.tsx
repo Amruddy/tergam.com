@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { CATEGORIES } from '@/lib/categories'
+import { getCategoriesByType } from '@/lib/categories'
 import { getAccountTypeLabel } from '@/lib/accounts'
 import type { Account, TransactionType } from '@/types'
 
@@ -226,10 +226,7 @@ export function CategoryGrid({
   type?: TransactionType | 'all'
   exclude?: string[]
 }) {
-  const cats =
-    type && type !== 'all'
-      ? CATEGORIES.filter((c) => (c.type === type || c.type === 'both') && !exclude.includes(c.id))
-      : CATEGORIES.filter((c) => !exclude.includes(c.id))
+  const cats = getCategoriesByType(type).filter((c) => !exclude.includes(c.id))
 
   return (
     <div className="grid grid-cols-5 gap-1.5">
