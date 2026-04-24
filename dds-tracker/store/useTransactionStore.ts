@@ -17,6 +17,7 @@ import {
   dbUpsertGoal, dbDeleteGoal,
   dbUpsertRecurring, dbDeleteRecurring,
   dbUpsertSettings,
+  dbUpsertCustomCategory,
   dbReplaceAccountReferences,
   dbClearAllUserData,
 } from '@/lib/db'
@@ -340,6 +341,7 @@ export const useTransactionStore = create<TransactionStore>()(
             custom: true,
           }
           set((s) => ({ customCategories: [...s.customCategories, newCategory] }))
+          syncTask(() => dbUpsertCustomCategory(newCategory), 'Не удалось сохранить категорию в облаке.')
           return newCategory
         },
 
@@ -385,6 +387,16 @@ export const useTransactionStore = create<TransactionStore>()(
               data.accounts = defaults
             }
 
+            const localCustomCategories = get().customCategories
+            const mergedCustomCategories = [...data.customCategories]
+            const cloudCategoryIds = new Set(data.customCategories.map((category) => category.id))
+            const categoriesToUpload = localCustomCategories.filter((category) => !cloudCategoryIds.has(category.id))
+
+            if (categoriesToUpload.length > 0) {
+              await Promise.all(categoriesToUpload.map((category) => dbUpsertCustomCategory(category)))
+              mergedCustomCategories.push(...categoriesToUpload)
+            }
+
             set({
               accounts: data.accounts,
               transactions: data.transactions,
@@ -392,7 +404,7 @@ export const useTransactionStore = create<TransactionStore>()(
               budgets: data.budgets,
               goals: data.goals,
               recurring: data.recurring,
-              customCategories: get().customCategories,
+              customCategories: mergedCustomCategories,
               settings: data.settings ?? get().settings,
               profile: data.profile ?? get().profile,
               supabaseLoaded: true,

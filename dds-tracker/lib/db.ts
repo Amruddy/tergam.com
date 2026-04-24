@@ -1,5 +1,5 @@
 import { getSupabase } from './supabase'
-import { Account, Transaction, Transfer, Budget, Goal, RecurringTransaction, Settings, UserProfile } from '@/types'
+import { Account, Transaction, Transfer, Budget, Goal, RecurringTransaction, Settings, UserProfile, Category } from '@/types'
 
 function toErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message
@@ -98,6 +98,10 @@ const toRecurring = (r: any): RecurringTransaction => ({
   active: r.active, createdAt: r.created_at,
 })
 
+const toCategory = (r: any): Category => ({
+  id: r.id, name: r.name, emoji: r.emoji, color: r.color, type: r.type, custom: true,
+})
+
 // ── TS → Row ──────────────────────────────────────────────────────────────────
 
 const fromAccount = (a: Account) => ({
@@ -132,6 +136,28 @@ const fromRecurring = (r: RecurringTransaction) => ({
   active: r.active, created_at: r.createdAt,
 })
 
+const fromCategory = (c: Category) => ({
+  id: c.id, name: c.name, emoji: c.emoji, color: c.color, type: c.type,
+})
+
+function isMissingRelationError(error: unknown, relation: string) {
+  if (!error || typeof error !== 'object') return false
+
+  const details = error as { code?: unknown; message?: unknown; details?: unknown }
+  const code = typeof details.code === 'string' ? details.code : ''
+  const message = typeof details.message === 'string' ? details.message : ''
+  const extra = typeof details.details === 'string' ? details.details : ''
+  const haystack = `${message} ${extra}`.toLowerCase()
+
+  return code === '42P01' || haystack.includes(`relation "${relation}" does not exist`)
+}
+
+function createMissingCustomCategoriesTableError(error: unknown) {
+  return new Error(
+    `Custom categories sync is not configured in Supabase. Create table public.custom_categories and RLS policies from supabase/auth-setup.sql. Original error: ${toErrorMessage(error, 'Unknown Supabase error')}`
+  )
+}
+
 // ── Load all ──────────────────────────────────────────────────────────────────
 
 export async function dbLoadAll() {
@@ -140,7 +166,13 @@ export async function dbLoadAll() {
   const supabase = getSupabase()
   if (!supabase) return null
 
-  const [accountsData, transactionsData, transfersData, budgetsData, goalsData, recurringData, settingsData] = await Promise.all([
+  const customCategoriesPromise = unwrapQuery('Load custom categories', supabase.from('custom_categories').select('*').eq('user_id', userId).order('name'))
+    .catch((error) => {
+      if (isMissingRelationError(error, 'custom_categories')) return []
+      throw error
+    })
+
+  const [accountsData, transactionsData, transfersData, budgetsData, goalsData, recurringData, settingsData, customCategoriesData] = await Promise.all([
     unwrapQuery('Load accounts', supabase.from('accounts').select('*').eq('user_id', userId).order('created_at')),
     unwrapQuery('Load transactions', supabase.from('transactions').select('*').eq('user_id', userId).order('created_at', { ascending: false })),
     unwrapQuery('Load transfers', supabase.from('transfers').select('*').eq('user_id', userId).order('created_at', { ascending: false })),
@@ -148,6 +180,7 @@ export async function dbLoadAll() {
     unwrapQuery('Load goals', supabase.from('goals').select('*').eq('user_id', userId).order('created_at')),
     unwrapQuery('Load recurring', supabase.from('recurring').select('*').eq('user_id', userId).order('created_at')),
     unwrapQuery<any | null>('Load settings', supabase.from('settings').select('*').eq('user_id', userId).maybeSingle()),
+    customCategoriesPromise,
   ])
 
   return {
@@ -157,6 +190,7 @@ export async function dbLoadAll() {
     budgets: (budgetsData || []).map(toBudget),
     goals: (goalsData || []).map(toGoal),
     recurring: (recurringData || []).map(toRecurring),
+    customCategories: (customCategoriesData || []).map(toCategory),
     settings: settingsData ? { currency: settingsData.currency, theme: settingsData.theme } as Settings : null,
     profile: settingsData ? {
       fullName: settingsData.full_name, email: settingsData.email,
@@ -253,6 +287,20 @@ export const dbUpsertRecurring = async (r: RecurringTransaction) => {
   const supabase = getSupabase()
   if (!supabase) return
   await ensureMutation('Upsert recurring', supabase.from('recurring').upsert({ ...fromRecurring(r), user_id: userId }))
+}
+
+export const dbUpsertCustomCategory = async (category: Category) => {
+  const userId = await getUserId()
+  if (!userId) return
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  const { error } = await supabase.from('custom_categories').upsert({ ...fromCategory(category), user_id: userId })
+  if (!error) return
+  if (isMissingRelationError(error, 'custom_categories')) {
+    throw createMissingCustomCategoriesTableError(error)
+  }
+  throw createDbError('Upsert custom category', error)
 }
 
 export const dbDeleteRecurring = async (id: string) => {
@@ -371,6 +419,11 @@ export const dbClearAllUserData = async () => {
     ensureMutation('Delete goals', supabase.from('goals').delete().eq('user_id', userId)),
     ensureMutation('Delete recurring', supabase.from('recurring').delete().eq('user_id', userId)),
     ensureMutation('Delete settings', supabase.from('settings').delete().eq('user_id', userId)),
+    ensureMutation('Delete custom categories', supabase.from('custom_categories').delete().eq('user_id', userId))
+      .catch((error) => {
+        if (isMissingRelationError(error, 'custom_categories')) return
+        throw error
+      }),
     ensureMutation('Delete accounts', supabase.from('accounts').delete().eq('user_id', userId)),
   ])
 

@@ -6,6 +6,15 @@ alter table if exists public.goals add column if not exists user_id uuid referen
 alter table if exists public.recurring add column if not exists user_id uuid references auth.users(id) on delete cascade;
 alter table if exists public.settings add column if not exists user_id uuid references auth.users(id) on delete cascade;
 
+create table if not exists public.custom_categories (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  emoji text not null,
+  color text not null,
+  type text not null check (type in ('income', 'expense', 'both'))
+);
+
 create unique index if not exists settings_user_id_idx on public.settings(user_id);
 create index if not exists accounts_user_id_idx on public.accounts(user_id);
 create index if not exists transactions_user_id_idx on public.transactions(user_id);
@@ -13,6 +22,7 @@ create index if not exists transfers_user_id_idx on public.transfers(user_id);
 create index if not exists budgets_user_id_idx on public.budgets(user_id);
 create index if not exists goals_user_id_idx on public.goals(user_id);
 create index if not exists recurring_user_id_idx on public.recurring(user_id);
+create index if not exists custom_categories_user_id_idx on public.custom_categories(user_id);
 
 alter table if exists public.accounts enable row level security;
 alter table if exists public.transactions enable row level security;
@@ -21,6 +31,7 @@ alter table if exists public.budgets enable row level security;
 alter table if exists public.goals enable row level security;
 alter table if exists public.recurring enable row level security;
 alter table if exists public.settings enable row level security;
+alter table if exists public.custom_categories enable row level security;
 
 drop policy if exists "accounts_select_own" on public.accounts;
 drop policy if exists "accounts_insert_own" on public.accounts;
@@ -84,3 +95,12 @@ create policy "settings_select_own" on public.settings for select using (auth.ui
 create policy "settings_insert_own" on public.settings for insert with check (auth.uid() = user_id);
 create policy "settings_update_own" on public.settings for update using (auth.uid() = user_id);
 create policy "settings_delete_own" on public.settings for delete using (auth.uid() = user_id);
+
+drop policy if exists "custom_categories_select_own" on public.custom_categories;
+drop policy if exists "custom_categories_insert_own" on public.custom_categories;
+drop policy if exists "custom_categories_update_own" on public.custom_categories;
+drop policy if exists "custom_categories_delete_own" on public.custom_categories;
+create policy "custom_categories_select_own" on public.custom_categories for select using (auth.uid() = user_id);
+create policy "custom_categories_insert_own" on public.custom_categories for insert with check (auth.uid() = user_id);
+create policy "custom_categories_update_own" on public.custom_categories for update using (auth.uid() = user_id);
+create policy "custom_categories_delete_own" on public.custom_categories for delete using (auth.uid() = user_id);
