@@ -6,7 +6,7 @@ import { X, Plus, Tag, Check } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getCategoriesByType } from '@/lib/categories'
 import { getActiveAccounts, getDefaultAccountId } from '@/lib/accounts'
-import { cn } from '@/lib/utils'
+import { cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { Transaction, TransactionType } from '@/types'
 import { AccountSelect } from '@/components/ui'
 
@@ -51,8 +51,7 @@ export function TransactionForm({ editingTx, onClose }: Props) {
 
   const availableCategories = getCategoriesByType(type)
 
-  const handleAmountChange = (v: string) => setAmount(v.replace(/[^\d]/g, ''))
-  const formatDisplay = (v: string) => v ? Number(v).toLocaleString('ru-RU') : ''
+  const handleAmountChange = (v: string) => setAmount(sanitizeMoneyInput(v))
 
   const addTag = (tag: string) => {
     const t = tag.trim().toLowerCase()
@@ -66,7 +65,7 @@ export function TransactionForm({ editingTx, onClose }: Props) {
     e.preventDefault()
     if (!amount || !category || !date || !accountId) return
 
-    const payload = { type, amount: Number(amount), category, accountId, date, description, tags }
+    const payload = { type, amount: parseMoneyInput(amount), category, accountId, date, description, tags }
 
     if (editingTx) {
       updateTransaction(editingTx.id, payload)
@@ -121,7 +120,7 @@ export function TransactionForm({ editingTx, onClose }: Props) {
       <div>
         <label className="text-xs text-slate-500 dark:text-gray-500 block mb-1.5">Сумма</label>
         <div className="relative">
-          <input type="text" value={formatDisplay(amount)} onChange={(e) => handleAmountChange(e.target.value)} placeholder="0" required className={cn(inputCls, 'text-base sm:text-lg font-semibold pr-8')} />
+          <input type="text" inputMode="decimal" value={formatMoneyInput(amount)} onChange={(e) => handleAmountChange(e.target.value)} placeholder="0" required className={cn(inputCls, 'text-base sm:text-lg font-semibold pr-8')} />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 font-medium">₽</span>
         </div>
       </div>

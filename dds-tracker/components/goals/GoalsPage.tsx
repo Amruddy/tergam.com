@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, Edit2, Check, X, Trophy } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
-import { formatCurrency, cn } from '@/lib/utils'
+import { formatCurrency, cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { Goal } from '@/types'
 import { StatStrip, EmptyState, FormCard, Btn, IconBtn, FieldLabel, inputCls, PageHeader } from '@/components/ui'
 
@@ -31,7 +31,7 @@ function GoalCard({
   const [depositInput, setDepositInput] = useState('')
 
   const handleDeposit = () => {
-    const n = Number(depositInput.replace(/\D/g, ''))
+    const n = parseMoneyInput(depositInput)
     if (n > 0) updateGoal(goal.id, { savedAmount: goal.savedAmount + n })
     setDepositInput('')
     setDepositing(false)
@@ -103,10 +103,10 @@ function GoalCard({
             <motion.div key="inp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-2">
               <input
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 autoFocus
-                value={depositInput}
-                onChange={(e) => setDepositInput(e.target.value.replace(/\D/g, ''))}
+                value={formatMoneyInput(depositInput)}
+                onChange={(e) => setDepositInput(sanitizeMoneyInput(e.target.value))}
                 onKeyDown={(e) => e.key === 'Enter' && handleDeposit()}
                 placeholder="Сумма пополнения"
                 className="flex-1 bg-slate-50 dark:bg-[#0a0a0f] border border-slate-200 dark:border-white/8 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400/60 placeholder-slate-300 dark:placeholder-gray-600"
@@ -143,7 +143,7 @@ function GoalForm({ editing, onClose }: { editing?: Goal; onClose: () => void })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const payload = { name, emoji, color, targetAmount: Number(target), savedAmount: Number(saved), deadline }
+    const payload = { name, emoji, color, targetAmount: parseMoneyInput(target), savedAmount: parseMoneyInput(saved), deadline }
     if (editing) updateGoal(editing.id, payload)
     else addGoal(payload)
     onClose()
@@ -196,11 +196,11 @@ function GoalForm({ editing, onClose }: { editing?: Goal; onClose: () => void })
         <div className="grid grid-cols-2 gap-3">
           <div>
             <FieldLabel>Цель, ₽</FieldLabel>
-            <input type="text" inputMode="numeric" value={target} onChange={(e) => setTarget(e.target.value.replace(/\D/g, ''))} placeholder="200 000" required className={inputCls} />
+            <input type="text" inputMode="decimal" value={formatMoneyInput(target)} onChange={(e) => setTarget(sanitizeMoneyInput(e.target.value))} placeholder="200 000" required className={inputCls} />
           </div>
           <div>
             <FieldLabel>Накоплено, ₽</FieldLabel>
-            <input type="text" inputMode="numeric" value={saved} onChange={(e) => setSaved(e.target.value.replace(/\D/g, ''))} placeholder="0" className={inputCls} />
+            <input type="text" inputMode="decimal" value={formatMoneyInput(saved)} onChange={(e) => setSaved(sanitizeMoneyInput(e.target.value))} placeholder="0" className={inputCls} />
           </div>
         </div>
 

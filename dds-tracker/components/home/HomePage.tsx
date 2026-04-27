@@ -4,21 +4,23 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   TrendingUp, TrendingDown, Wallet, Plus, Check,
-  Tag, X, ArrowRight, ChevronDown, ChevronUp, Zap, Mic, Square, SlidersHorizontal,
+  Tag, X, ArrowRight, ChevronDown, ChevronUp, Zap, Mic, Square, Tags, Trash2, AlertTriangle,
 } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
 import { getCategoriesByType, getCategoryById } from '@/lib/categories'
 import { getDefaultAccountId } from '@/lib/accounts'
-import { formatCurrency, getMonthKey, cn } from '@/lib/utils'
+import { formatCurrency, getMonthKey, cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { parseQuickInput } from '@/lib/parseQuick'
-import { TransactionType } from '@/types'
-import { AccountSelect } from '@/components/ui'
+import { Category, TransactionType } from '@/types'
+import { AccountSelect, Btn, IconBtn } from '@/components/ui'
 
 const SUGGESTED_TAGS = ['работа', 'продукты', 'такси', 'жильё', 'досуг', 'здоровье']
 const HOME_GOAL_KEY = 'tergam-home-goal-id'
-const HOME_CATEGORY_PRESET_KEY = 'tergam-home-category-preset'
-const HOME_CATEGORY_LIMIT = 9
+const HOME_CATEGORY_PRESET_KEY = 'tergam-home-category-preset-v2'
+const HOME_CATEGORY_LIMIT = 12
+const HOME_CATEGORY_VISIBLE_LIMIT = HOME_CATEGORY_LIMIT - 1
+const HOME_CATEGORY_DEFAULT_COUNT = 4
 const CUSTOM_CATEGORY_COLORS = ['#6366f1', '#ec4899', '#06b6d4', '#22c55e', '#f97316', '#eab308']
 
 type BrowserSpeechRecognition = {
@@ -315,7 +317,7 @@ function HomeGoalCard() {
 }
 
 function QuickAddForm() {
-  const { accounts, addTransaction, addCustomCategory } = useTransactionStore()
+  const { accounts, transactions, budgets, recurring, customCategories, addTransaction, addCustomCategory, removeCategory } = useTransactionStore()
   const activeAccounts = getActiveAccounts(accounts)
 
   const [type, setType] = useState<TransactionType>('expense')
@@ -334,21 +336,19 @@ function QuickAddForm() {
   const [customCategoryEmoji, setCustomCategoryEmoji] = useState('')
   const [customCategoryColor, setCustomCategoryColor] = useState(CUSTOM_CATEGORY_COLORS[0])
   const [preferredCategoryIds, setPreferredCategoryIds] = useState<Record<TransactionType, string[]>>({
-    expense: [],
-    income: [],
+    expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
+    income: getCategoriesByType('income').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
   })
+  const [categoryToRemove, setCategoryToRemove] = useState<Category | null>(null)
+  const [replacementCategoryId, setReplacementCategoryId] = useState('other')
 
   const availableCategories = getCategoriesByType(type)
   const visibleCategories = useMemo(() => {
     const preferredIds = preferredCategoryIds[type]
-    const preferred = preferredIds
+    return preferredIds
       .map((id) => availableCategories.find((cat) => cat.id === id))
       .filter((cat): cat is NonNullable<typeof cat> => Boolean(cat))
-
-    if (preferred.length >= HOME_CATEGORY_LIMIT) return preferred.slice(0, HOME_CATEGORY_LIMIT)
-
-    const fallback = availableCategories.filter((cat) => !preferred.some((preferredCat) => preferredCat.id === cat.id))
-    return [...preferred, ...fallback].slice(0, HOME_CATEGORY_LIMIT)
+      .slice(0, HOME_CATEGORY_VISIBLE_LIMIT)
   }, [availableCategories, preferredCategoryIds, type])
 
   useEffect(() => {
@@ -362,8 +362,8 @@ function QuickAddForm() {
     const saved = window.localStorage.getItem(HOME_CATEGORY_PRESET_KEY)
     if (!saved) {
       setPreferredCategoryIds({
-        expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
-        income: getCategoriesByType('income').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+        expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
+        income: getCategoriesByType('income').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
       })
       return
     }
@@ -371,25 +371,23 @@ function QuickAddForm() {
     try {
       const parsed = JSON.parse(saved) as Partial<Record<TransactionType, string[]>>
       setPreferredCategoryIds({
-        expense: Array.isArray(parsed.expense) ? parsed.expense : getCategoriesByType('expense').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
-        income: Array.isArray(parsed.income) ? parsed.income : getCategoriesByType('income').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+        expense: Array.isArray(parsed.expense) ? parsed.expense.slice(0, HOME_CATEGORY_VISIBLE_LIMIT) : getCategoriesByType('expense').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
+        income: Array.isArray(parsed.income) ? parsed.income.slice(0, HOME_CATEGORY_VISIBLE_LIMIT) : getCategoriesByType('income').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
       })
     } catch {
       setPreferredCategoryIds({
-        expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
-        income: getCategoriesByType('income').slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+        expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
+        income: getCategoriesByType('income').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
       })
     }
   }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (preferredCategoryIds.expense.length === 0 && preferredCategoryIds.income.length === 0) return
     window.localStorage.setItem(HOME_CATEGORY_PRESET_KEY, JSON.stringify(preferredCategoryIds))
   }, [preferredCategoryIds])
 
-  const handleAmountChange = (v: string) => setAmount(v.replace(/[^\d]/g, ''))
-  const formatDisplay = (v: string) => (v ? Number(v).toLocaleString('ru-RU') : '')
+  const handleAmountChange = (v: string) => setAmount(sanitizeMoneyInput(v))
   const addTag = (tag: string) => {
     const t = tag.trim().toLowerCase()
     if (t && !tags.includes(t)) setTags([...tags, t])
@@ -416,7 +414,7 @@ function QuickAddForm() {
         }
       }
 
-      if (currentIds.length >= HOME_CATEGORY_LIMIT) return current
+      if (currentIds.length >= HOME_CATEGORY_VISIBLE_LIMIT) return current
 
       return {
         ...current,
@@ -439,7 +437,7 @@ function QuickAddForm() {
     setCategory(nextCategory.id)
     setPreferredCategoryIds((current) => ({
       ...current,
-      [type]: [nextCategory.id, ...current[type].filter((id) => id !== nextCategory.id)].slice(0, HOME_CATEGORY_LIMIT),
+      [type]: [nextCategory.id, ...current[type].filter((id) => id !== nextCategory.id)].slice(0, HOME_CATEGORY_VISIBLE_LIMIT),
     }))
     setShowCustomCategoryForm(false)
     setCustomCategoryName('')
@@ -447,10 +445,34 @@ function QuickAddForm() {
     setCustomCategoryColor(CUSTOM_CATEGORY_COLORS[0])
   }
 
+  const getCategoryUsage = (categoryId: string) => ({
+    transactions: transactions.filter((tx) => tx.category === categoryId).length,
+    budgets: budgets.filter((budget) => budget.category === categoryId).length,
+    recurring: recurring.filter((rec) => rec.category === categoryId).length,
+  })
+
+  const beginRemoveCategory = (cat: Category) => {
+    const fallback = availableCategories.find((item) => item.id !== cat.id && item.id === 'other')
+      ?? availableCategories.find((item) => item.id !== cat.id)
+    setReplacementCategoryId(fallback?.id ?? 'other')
+    setCategoryToRemove(cat)
+  }
+
+  const confirmRemoveCategory = () => {
+    if (!categoryToRemove) return
+    removeCategory(categoryToRemove.id, replacementCategoryId)
+    setPreferredCategoryIds((current) => ({
+      expense: current.expense.filter((id) => id !== categoryToRemove.id),
+      income: current.income.filter((id) => id !== categoryToRemove.id),
+    }))
+    if (category === categoryToRemove.id) setCategory('')
+    setCategoryToRemove(null)
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!amount || !category || !accountId) return
-    addTransaction({ type, amount: Number(amount), category, accountId, date, description, tags })
+    addTransaction({ type, amount: parseMoneyInput(amount), category, accountId, date, description, tags })
     setSaved(true)
     setTimeout(() => { setSaved(false); reset() }, 1200)
   }
@@ -482,8 +504,8 @@ function QuickAddForm() {
       <div className="relative">
         <input
           type="text"
-          inputMode="numeric"
-          value={formatDisplay(amount)}
+          inputMode="decimal"
+          value={formatMoneyInput(amount)}
           onChange={(e) => handleAmountChange(e.target.value)}
           placeholder="0"
           required
@@ -493,8 +515,8 @@ function QuickAddForm() {
       </div>
 
       <div>
-        <p className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-2 font-medium">Категория</p>
-        <div className="grid grid-cols-5 gap-1.5">
+        <p className="mb-2 text-[13px] font-medium text-slate-400 dark:text-gray-500 sm:text-xs">Категория</p>
+        <div className="grid grid-cols-5 sm:grid-cols-6 gap-1.5">
           {visibleCategories.map((cat) => (
             <button
               key={cat.id}
@@ -517,17 +539,18 @@ function QuickAddForm() {
           <button
             type="button"
             onClick={() => setShowCategoryPicker((value) => !value)}
+            title="Выбрать быстрые категории"
             className={cn(
-              'flex flex-col items-center justify-center gap-1 p-1.5 sm:p-2 rounded-xl border border-dashed transition-all h-full min-h-[66px] sm:min-h-[72px]',
+              'flex h-full min-h-[66px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed p-1.5 text-center transition-all sm:min-h-[72px] sm:p-2',
               showCategoryPicker
                 ? 'border-indigo-400 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300'
                 : 'border-slate-300 dark:border-white/10 text-slate-500 dark:text-gray-500 hover:border-indigo-400/50 hover:text-indigo-500'
             )}
           >
-            <span className="w-7 h-7 rounded-full bg-indigo-500/12 flex items-center justify-center">
-              <SlidersHorizontal size={14} />
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500/12 sm:h-8 sm:w-8">
+              <Tags size={15} />
             </span>
-            <span className="min-h-[24px] max-w-full overflow-hidden break-words text-[9px] sm:text-[9px] text-center leading-[1.15] font-medium">Выбрать</span>
+            <span className="min-h-[24px] max-w-full overflow-hidden break-words text-center text-[9px] font-medium leading-[1.15]">Выбрать</span>
           </button>
         </div>
         <AnimatePresence initial={false}>
@@ -542,17 +565,17 @@ function QuickAddForm() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-slate-900 dark:text-white">Быстрые категории</p>
-                    <p className="text-xs text-slate-400 dark:text-gray-500">Выбрано {preferredCategoryIds[type].length} из {HOME_CATEGORY_LIMIT}</p>
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Выбрано {preferredCategoryIds[type].length} из {HOME_CATEGORY_VISIBLE_LIMIT}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setPreferredCategoryIds((current) => ({
                       ...current,
-                      [type]: availableCategories.slice(0, HOME_CATEGORY_LIMIT).map((cat) => cat.id),
+                      [type]: [],
                     }))}
                     className="text-xs text-indigo-500 hover:text-indigo-600 transition-colors"
                   >
-                    Сбросить
+                    Очистить
                   </button>
                 </div>
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-white/8 bg-white/70 dark:bg-white/[0.03] px-3 py-2.5">
@@ -637,28 +660,85 @@ function QuickAddForm() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+                {categoryToRemove && (
+                  <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.04] p-3 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle size={16} className="mt-0.5 flex-shrink-0 text-red-500" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {customCategories.some((item) => item.id === categoryToRemove.id) ? 'Удалить категорию' : 'Скрыть категорию'}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">
+                          {categoryToRemove.emoji} {categoryToRemove.name}
+                        </p>
+                      </div>
+                    </div>
+                    {(() => {
+                      const usage = getCategoryUsage(categoryToRemove.id)
+                      const total = usage.transactions + usage.budgets + usage.recurring
+                      return total > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-slate-500 dark:text-gray-400">
+                            Связано: {usage.transactions} транзакций, {usage.budgets} бюджетов, {usage.recurring} автоплатежей. Перенести в:
+                          </p>
+                          <select
+                            value={replacementCategoryId}
+                            onChange={(e) => setReplacementCategoryId(e.target.value)}
+                            className={inputBase}
+                          >
+                            {availableCategories
+                              .filter((item) => item.id !== categoryToRemove.id)
+                              .map((item) => (
+                                <option key={item.id} value={item.id}>{item.emoji} {item.name}</option>
+                              ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 dark:text-gray-400">Связанных записей нет.</p>
+                      )
+                    })()}
+                    <div className="flex gap-2">
+                      <Btn type="button" variant="danger" className="flex-1" onClick={confirmRemoveCategory}>
+                        {customCategories.some((item) => item.id === categoryToRemove.id) ? 'Удалить' : 'Скрыть'}
+                      </Btn>
+                      <Btn type="button" variant="secondary" className="flex-1" onClick={() => setCategoryToRemove(null)}>Отмена</Btn>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {availableCategories.map((cat) => {
                     const selectedForHome = preferredCategoryIds[type].includes(cat.id)
-                    const reachedLimit = !selectedForHome && preferredCategoryIds[type].length >= HOME_CATEGORY_LIMIT
+                    const reachedLimit = !selectedForHome && preferredCategoryIds[type].length >= HOME_CATEGORY_VISIBLE_LIMIT
                     return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => togglePreferredCategory(cat.id)}
-                        disabled={reachedLimit}
-                        className={cn(
-                          'flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center transition-all',
-                          selectedForHome
-                            ? 'border-2 text-slate-900 dark:text-white shadow-sm'
-                            : 'border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-500 hover:border-slate-300 dark:hover:border-white/15',
-                          reachedLimit && 'opacity-40 cursor-not-allowed'
+                      <div key={cat.id} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => togglePreferredCategory(cat.id)}
+                          disabled={reachedLimit}
+                          className={cn(
+                            'flex h-full min-h-[72px] w-full flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center transition-all',
+                            selectedForHome
+                              ? 'border-2 text-slate-900 dark:text-white shadow-sm'
+                              : 'border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-500 hover:border-slate-300 dark:hover:border-white/15',
+                            reachedLimit && 'opacity-40 cursor-not-allowed'
+                          )}
+                          style={selectedForHome ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
+                        >
+                          <span className="flex h-7 w-7 items-center justify-center text-[17px] leading-none sm:h-8 sm:w-8 sm:text-[18px]">{cat.emoji}</span>
+                          <span className="min-h-[24px] max-w-full overflow-hidden break-words text-[9px] leading-[1.15] font-medium">{cat.name}</span>
+                        </button>
+                        {cat.id !== 'other' && (
+                          <IconBtn
+                            type="button"
+                            variant="danger"
+                            title={customCategories.some((item) => item.id === cat.id) ? 'Удалить категорию' : 'Скрыть категорию'}
+                            onClick={() => beginRemoveCategory(cat)}
+                            className="absolute right-1 top-1 h-6 w-6 rounded-lg bg-white/90 dark:bg-[#13131a]/90"
+                          >
+                            <Trash2 size={11} />
+                          </IconBtn>
                         )}
-                        style={selectedForHome ? { borderColor: cat.color, background: `${cat.color}15` } : {}}
-                      >
-                        <span className="flex h-7 w-7 items-center justify-center text-[17px] leading-none sm:h-8 sm:w-8 sm:text-[18px]">{cat.emoji}</span>
-                        <span className="min-h-[24px] max-w-full overflow-hidden break-words text-[9px] leading-[1.15] font-medium">{cat.name}</span>
-                      </button>
+                      </div>
                     )
                   })}
                 </div>

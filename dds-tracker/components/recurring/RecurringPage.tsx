@@ -6,7 +6,7 @@ import { Plus, Trash2, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountById, getActiveAccounts, getDefaultAccountId } from '@/lib/accounts'
 import { getCategoryById } from '@/lib/categories'
-import { formatCurrency, cn } from '@/lib/utils'
+import { formatCurrency, cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { RecurringTransaction, TransactionType, RecurringFrequency } from '@/types'
 import { EmptyState, FormCard, Btn, IconBtn, FieldLabel, inputCls, CategoryGrid, TypeToggle, SectionLabel, AccountSelect, PageHeader } from '@/components/ui'
 
@@ -103,7 +103,7 @@ function AddRecurringForm({ onClose }: { onClose: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!amount || !category || !accountId) return
-    addRecurring({ type, amount: Number(amount.replace(/\D/g, '')), category, accountId, description, tags: [], frequency, startDate, active: true })
+    addRecurring({ type, amount: parseMoneyInput(amount), category, accountId, description, tags: [], frequency, startDate, active: true })
     onClose()
   }
 
@@ -115,7 +115,7 @@ function AddRecurringForm({ onClose }: { onClose: () => void }) {
         <div>
           <FieldLabel>Сумма</FieldLabel>
           <div className="relative">
-            <input type="text" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))} placeholder="0" required className={cn(inputCls, 'text-xl font-bold pr-8')} />
+            <input type="text" inputMode="decimal" value={formatMoneyInput(amount)} onChange={(e) => setAmount(sanitizeMoneyInput(e.target.value))} placeholder="0" required className={cn(inputCls, 'text-xl font-bold pr-8')} />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 font-semibold">₽</span>
           </div>
         </div>

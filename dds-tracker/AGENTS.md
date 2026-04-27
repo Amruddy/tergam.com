@@ -37,6 +37,30 @@ Use this guide for all work in this repository.
 - Lazy-load modals and rarely used panels.
 - After changing dashboard or shell code, run `npm.cmd run build` on Windows and compare `/dashboard` First Load JS.
 
+## Verification Commands
+
+- Use `npm.cmd run build` as the main production check on Windows.
+- Use `npm.cmd run lint` when linting is configured or touched code is likely to be lint-sensitive.
+- Use `npm.cmd run dev` only when visual or manual browser verification is needed.
+
+## Domain Rules
+
+- Treat money calculations carefully. Reuse existing domain helpers for parsing, formatting, totals, and aggregation when available.
+- Do not change transaction, category, account, budget, or persistence semantics without checking `store/useTransactionStore.ts` and helpers in `lib/`.
+- Preserve existing import, export, local storage, and migration behavior unless the user explicitly asks to change it.
+
+## Mobile Rules
+
+- Verify narrow mobile layouts when changing navigation, forms, dashboard cards, charts, tables, filters, or page actions.
+- Avoid horizontal overflow. Prefer compact controls, responsive grids, and stable dimensions for repeated dashboard elements.
+- Keep bottom navigation reachable and make sure it does not overlap primary page actions or modal controls.
+
+## Change Scope
+
+- Keep edits narrowly scoped to the requested task.
+- Do not refactor shared primitives, store shape, routes, navigation structure, or persisted fields unless the task requires it.
+- Do not rename files, routes, categories, accounts, or transaction fields without explicit approval.
+
 ## Git Rules
 
 - Work from `Test` unless the user explicitly asks for another branch.

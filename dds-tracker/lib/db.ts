@@ -303,6 +303,18 @@ export const dbUpsertCustomCategory = async (category: Category) => {
   throw createDbError('Upsert custom category', error)
 }
 
+export const dbDeleteCustomCategory = async (id: string) => {
+  const userId = await getUserId()
+  if (!userId) return
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  const { error } = await supabase.from('custom_categories').delete().eq('id', id).eq('user_id', userId)
+  if (!error) return
+  if (isMissingRelationError(error, 'custom_categories')) return
+  throw createDbError('Delete custom category', error)
+}
+
 export const dbDeleteRecurring = async (id: string) => {
   const userId = await getUserId()
   if (!userId) return

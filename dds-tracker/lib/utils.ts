@@ -22,6 +22,48 @@ export function formatCurrency(amount: number, currency: CurrencyCode = 'RUB'): 
   }).format(amount)
 }
 
+export function sanitizeMoneyInput(value: string, options: { allowNegative?: boolean } = {}): string {
+  const allowNegative = options.allowNegative ?? false
+  let result = ''
+  let hasSeparator = false
+  let hasMinus = false
+
+  for (const char of value.replace(/\s/g, '').replace(',', '.')) {
+    if (char >= '0' && char <= '9') {
+      result += char
+      continue
+    }
+
+    if (char === '.' && !hasSeparator) {
+      result += char
+      hasSeparator = true
+      continue
+    }
+
+    if (char === '-' && allowNegative && !hasMinus && result.length === 0) {
+      result += char
+      hasMinus = true
+    }
+  }
+
+  return result
+}
+
+export function parseMoneyInput(value: string): number {
+  const parsed = Number(sanitizeMoneyInput(value, { allowNegative: true }))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+export function formatMoneyInput(value: string): string {
+  const sanitized = sanitizeMoneyInput(value, { allowNegative: value.startsWith('-') })
+  const negative = sanitized.startsWith('-')
+  const unsigned = negative ? sanitized.slice(1) : sanitized
+  const [integerPart, decimalPart] = unsigned.split('.')
+  const formattedInteger = integerPart ? Number(integerPart).toLocaleString('ru-RU') : ''
+  const formatted = decimalPart !== undefined ? `${formattedInteger}.${decimalPart}` : formattedInteger
+  return negative ? `-${formatted}` : formatted
+}
+
 export function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
   return new Intl.DateTimeFormat('ru-RU', {

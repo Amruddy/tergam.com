@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Archive, ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Landmark, PencilLine, Plus, Trash2, Wallet } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getAccountMonthChange, getAccountTypeLabel, getActiveAccounts } from '@/lib/accounts'
-import { formatCurrency, cn, getMonthKey, formatDate } from '@/lib/utils'
+import { formatCurrency, cn, getMonthKey, formatDate, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { Account, AccountType } from '@/types'
 import { Btn, EmptyState, FieldLabel, FormCard, IconBtn, PageHeader, SectionLabel, StatStrip, inputCls } from '@/components/ui'
 import { getCategoryById } from '@/lib/categories'
@@ -46,7 +46,7 @@ function AccountEditor({
       type,
       emoji: selectedType.emoji,
       color: selectedType.color,
-      initialBalance: Number(initialBalance || '0'),
+      initialBalance: parseMoneyInput(initialBalance),
       archived: account?.archived ?? false,
     }
 
@@ -87,7 +87,7 @@ function AccountEditor({
         <div>
           <FieldLabel>Стартовый баланс</FieldLabel>
           <div className="relative">
-            <input type="text" inputMode="numeric" value={initialBalance} onChange={(e) => setInitialBalance(e.target.value.replace(/[^\d-]/g, ''))} placeholder="0" className={cn(inputCls, 'pr-8')} />
+            <input type="text" inputMode="decimal" value={formatMoneyInput(initialBalance)} onChange={(e) => setInitialBalance(sanitizeMoneyInput(e.target.value, { allowNegative: true }))} placeholder="0" className={cn(inputCls, 'pr-8')} />
             <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 text-sm font-medium">₽</span>
           </div>
         </div>
@@ -118,7 +118,7 @@ function TransferForm({ onClose }: { onClose: () => void }) {
     addTransfer({
       fromAccountId,
       toAccountId,
-      amount: Number(amount),
+      amount: parseMoneyInput(amount),
       date,
       description: description.trim(),
     })
@@ -145,7 +145,7 @@ function TransferForm({ onClose }: { onClose: () => void }) {
         <div>
           <FieldLabel>Сумма</FieldLabel>
           <div className="relative">
-            <input type="text" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))} placeholder="0" className={cn(inputCls, 'pr-8')} />
+            <input type="text" inputMode="decimal" value={formatMoneyInput(amount)} onChange={(e) => setAmount(sanitizeMoneyInput(e.target.value))} placeholder="0" className={cn(inputCls, 'pr-8')} />
             <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 text-sm font-medium">₽</span>
           </div>
         </div>

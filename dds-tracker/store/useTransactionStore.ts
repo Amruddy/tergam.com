@@ -18,6 +18,7 @@ import {
   dbUpsertRecurring, dbDeleteRecurring,
   dbUpsertSettings,
   dbUpsertCustomCategory,
+  dbDeleteCustomCategory,
   dbReplaceAccountReferences,
   dbClearAllUserData,
 } from '@/lib/db'
@@ -25,6 +26,7 @@ import {
 function shouldApply(rec: RecurringTransaction, today: Date): boolean {
   if (!rec.active) return false
   const todayKey = getDayKey(today)
+  if (rec.startDate && todayKey < rec.startDate) return false
   if (rec.lastApplied === todayKey) return false
   if (!rec.lastApplied) return true
   const last = new Date(rec.lastApplied)
@@ -93,6 +95,7 @@ interface TransactionStore {
   goals: Goal[]
   recurring: RecurringTransaction[]
   customCategories: Category[]
+  hiddenCategoryIds: string[]
   profile: UserProfile
   settings: Settings
   initialized: boolean
@@ -123,6 +126,7 @@ interface TransactionStore {
   deleteRecurring: (id: string) => void
   applyRecurring: () => void
   addCustomCategory: (category: Omit<Category, 'id' | 'custom'>) => Category
+  removeCategory: (categoryId: string, replacementCategoryId?: string) => void
 
   updateSettings: (s: Partial<Settings>) => void
   updateProfile: (p: Partial<UserProfile>) => void
@@ -156,6 +160,7 @@ export const useTransactionStore = create<TransactionStore>()(
         goals: [],
         recurring: [],
         customCategories: [],
+        hiddenCategoryIds: [],
         profile: defaultProfile(),
         settings: defaultSettings(),
         initialized: true,
@@ -171,6 +176,7 @@ export const useTransactionStore = create<TransactionStore>()(
         goals: [],
         recurring: [],
         customCategories: [],
+        hiddenCategoryIds: [],
         profile: defaultProfile(),
         settings: defaultSettings(),
         initialized: false,
@@ -345,6 +351,49 @@ export const useTransactionStore = create<TransactionStore>()(
           return newCategory
         },
 
+        removeCategory: (categoryId, replacementCategoryId = 'other') => {
+          const state = get()
+          const isCustom = state.customCategories.some((category) => category.id === categoryId)
+          const replacement = replacementCategoryId === categoryId ? 'other' : replacementCategoryId
+
+          const nextTransactions = state.transactions.map((tx) => (
+            tx.category === categoryId ? { ...tx, category: replacement } : tx
+          ))
+          const nextBudgets = state.budgets.map((budget) => (
+            budget.category === categoryId ? { ...budget, category: replacement } : budget
+          ))
+          const nextRecurring = state.recurring.map((rec) => (
+            rec.category === categoryId ? { ...rec, category: replacement } : rec
+          ))
+
+          set({
+            transactions: nextTransactions,
+            budgets: nextBudgets,
+            recurring: nextRecurring,
+            customCategories: isCustom
+              ? state.customCategories.filter((category) => category.id !== categoryId)
+              : state.customCategories,
+            hiddenCategoryIds: isCustom || state.hiddenCategoryIds.includes(categoryId)
+              ? state.hiddenCategoryIds
+              : [...state.hiddenCategoryIds, categoryId],
+          })
+
+          syncTask(async () => {
+            await Promise.all([
+              ...nextTransactions
+                .filter((tx, index) => tx !== state.transactions[index])
+                .map((tx) => dbUpsertTransaction(tx)),
+              ...nextBudgets
+                .filter((budget, index) => budget !== state.budgets[index])
+                .map((budget) => dbUpsertBudget(budget)),
+              ...nextRecurring
+                .filter((rec, index) => rec !== state.recurring[index])
+                .map((rec) => dbUpsertRecurring(rec)),
+              ...(isCustom ? [dbDeleteCustomCategory(categoryId)] : []),
+            ])
+          }, 'Не удалось обновить категории в облаке.')
+        },
+
         updateSettings: (s) => {
           set((state) => ({ settings: { ...state.settings, ...s } }))
           const { settings, profile } = get()
@@ -405,6 +454,7 @@ export const useTransactionStore = create<TransactionStore>()(
               goals: data.goals,
               recurring: data.recurring,
               customCategories: mergedCustomCategories,
+              hiddenCategoryIds: get().hiddenCategoryIds,
               settings: data.settings ?? get().settings,
               profile: data.profile ?? get().profile,
               supabaseLoaded: true,
@@ -446,6 +496,7 @@ export const useTransactionStore = create<TransactionStore>()(
           supabaseLoaded: false,
           syncError: null,
           customCategories: Array.isArray(persistedState?.customCategories) ? persistedState.customCategories : [],
+          hiddenCategoryIds: Array.isArray(persistedState?.hiddenCategoryIds) ? persistedState.hiddenCategoryIds : [],
           transfers,
           transactions: transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId })),
           recurring: recurring.map((rec: any) => ({ ...rec, accountId: rec.accountId || fallbackId })),
