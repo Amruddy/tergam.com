@@ -24,9 +24,11 @@ export const CATEGORIES: Category[] = [
   { id: 'other', name: 'Прочее', emoji: '✨', color: '#94a3b8', type: 'both' },
 ]
 
-export const getAllCategories = (): Category[] => {
-  const { customCategories = [] } = useTransactionStore.getState()
-  return [...CATEGORIES, ...customCategories]
+export const getAllCategories = (options: { includeHidden?: boolean } = {}): Category[] => {
+  const { customCategories = [], hiddenCategoryIds = [] } = useTransactionStore.getState()
+  const categories = [...CATEGORIES, ...customCategories]
+  if (options.includeHidden) return categories
+  return categories.filter((category) => !hiddenCategoryIds.includes(category.id))
 }
 
 export const getCategoriesByType = (type?: TransactionType | 'all'): Category[] => {
@@ -36,7 +38,7 @@ export const getCategoriesByType = (type?: TransactionType | 'all'): Category[] 
 }
 
 export const getCategoryById = (id: string): Category =>
-  getAllCategories().find((category) => category.id === id) ?? CATEGORIES[CATEGORIES.length - 1]
+  getAllCategories({ includeHidden: true }).find((category) => category.id === id) ?? CATEGORIES[CATEGORIES.length - 1]
 
 export const EXPENSE_CATEGORIES = () => getCategoriesByType('expense')
 export const INCOME_CATEGORIES = () => getCategoriesByType('income')

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, AlertTriangle, Wallet, TrendingDown, ShieldAlert } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getCategoryById } from '@/lib/categories'
-import { formatCurrency, getMonthKey, cn } from '@/lib/utils'
+import { formatCurrency, getMonthKey, cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { Budget } from '@/types'
 import { StatStrip, EmptyState, FormCard, Btn, IconBtn, FieldLabel, inputCls, CategoryGrid, PageHeader } from '@/components/ui'
 
@@ -96,7 +96,7 @@ function AddBudgetForm({ onClose }: { onClose: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!category || !amount) return
-    addBudget({ category, amount: Number(amount.replace(/\D/g, '')), period: 'month' })
+    addBudget({ category, amount: parseMoneyInput(amount), period: 'month' })
     onClose()
   }
 
@@ -115,9 +115,9 @@ function AddBudgetForm({ onClose }: { onClose: () => void }) {
           <FieldLabel>Лимит в месяц</FieldLabel>
           <div className="relative">
             <input
-              type="text" inputMode="numeric"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' '))}
+              type="text" inputMode="decimal"
+              value={formatMoneyInput(amount)}
+              onChange={(e) => setAmount(sanitizeMoneyInput(e.target.value))}
               placeholder="15 000"
               className={cn(inputCls, 'pr-8')}
             />
