@@ -5,14 +5,14 @@ import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
 import { formatCurrency, getMonthKey, getChangePercent } from '@/lib/utils'
 import { useMemo } from 'react'
+import type { CurrencyCode } from '@/types'
 
 function StatCard({
-  label, amount, change, icon: Icon, color, glowClass,
+  label, amount, change, icon: Icon, color, glowClass, currency,
 }: {
   label: string; amount: number; change: number; icon: React.ElementType
-  color: string; glowClass: string
+  color: string; glowClass: string; currency: CurrencyCode
 }) {
-  const { settings } = useTransactionStore()
   const isPositiveChange = change >= 0
 
   return (
@@ -34,7 +34,7 @@ function StatCard({
         </div>
         <div className="text-[13px] md:text-xs text-slate-500 dark:text-gray-500 mb-0.5 leading-tight">{label}</div>
         <div className="text-[15px] md:text-xl xl:text-2xl font-bold text-slate-900 dark:text-white leading-tight break-words">
-          {formatCurrency(amount, settings.currency)}
+          {formatCurrency(amount, currency)}
         </div>
         <div className="text-xs text-slate-400 dark:text-gray-600 mt-1 hidden md:block">vs прошлый месяц</div>
       </div>
@@ -43,7 +43,10 @@ function StatCard({
 }
 
 export function StatsCards() {
-  const { accounts, transactions, transfers } = useTransactionStore()
+  const accounts = useTransactionStore((state) => state.accounts)
+  const transactions = useTransactionStore((state) => state.transactions)
+  const transfers = useTransactionStore((state) => state.transfers)
+  const currency = useTransactionStore((state) => state.settings.currency)
 
   const stats = useMemo(() => {
     const now = new Date()
@@ -70,11 +73,11 @@ export function StatsCards() {
   return (
     <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-4">
       <StatCard label="Доходы" amount={stats.income} change={stats.incomeChange}
-        icon={TrendingUp} color="#22c55e" glowClass="glow-green" />
+        icon={TrendingUp} color="#22c55e" glowClass="glow-green" currency={currency} />
       <StatCard label="Расходы" amount={stats.expense} change={-stats.expenseChange}
-        icon={TrendingDown} color="#ef4444" glowClass="glow-red" />
+        icon={TrendingDown} color="#ef4444" glowClass="glow-red" currency={currency} />
       <StatCard label="Баланс" amount={stats.balance} change={stats.balanceChange}
-        icon={Wallet} color="#6366f1" glowClass="glow-indigo" />
+        icon={Wallet} color="#6366f1" glowClass="glow-indigo" currency={currency} />
     </div>
   )
 }

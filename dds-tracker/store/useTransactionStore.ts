@@ -87,6 +87,63 @@ function remapLegacyDefaultAccountIds(
   }
 }
 
+function accountsMatchDefaultShape(accounts: Account[]) {
+  const defaults = createDefaultAccounts()
+  if (accounts.length !== defaults.length) return false
+
+  return defaults.every((defaultAccount) => {
+    const account = accounts.find((item) => item.type === defaultAccount.type)
+    return Boolean(account) &&
+      account?.name === defaultAccount.name &&
+      account?.emoji === defaultAccount.emoji &&
+      account?.color === defaultAccount.color &&
+      account?.initialBalance === defaultAccount.initialBalance &&
+      account?.archived === defaultAccount.archived
+  })
+}
+
+function hasUserContent(state: {
+  accounts: Account[]
+  transactions: Transaction[]
+  transfers: Transfer[]
+  budgets: Budget[]
+  goals: Goal[]
+  recurring: RecurringTransaction[]
+  customCategories: Category[]
+  profile?: UserProfile | null
+  settings?: Settings | null
+}) {
+  return state.transactions.length > 0 ||
+    state.transfers.length > 0 ||
+    state.budgets.length > 0 ||
+    state.goals.length > 0 ||
+    state.recurring.length > 0 ||
+    state.customCategories.length > 0 ||
+    (state.accounts.length > 0 && !accountsMatchDefaultShape(state.accounts)) ||
+    Boolean(state.profile?.fullName || state.profile?.email || state.profile?.phone || state.profile?.city) ||
+    Boolean(state.settings && (state.settings.currency !== 'RUB' || state.settings.theme !== 'light'))
+}
+
+function mergeById<T extends { id: string }>(cloudItems: T[], localItems: T[], includeLocal: boolean) {
+  if (!includeLocal) return cloudItems
+
+  const seen = new Set(cloudItems.map((item) => item.id))
+  return [
+    ...cloudItems,
+    ...localItems.filter((item) => {
+      if (seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    }),
+  ]
+}
+
+function getMissingById<T extends { id: string }>(sourceItems: T[], targetItems: T[], includeSource: boolean) {
+  if (!includeSource) return []
+  const targetIds = new Set(targetItems.map((item) => item.id))
+  return sourceItems.filter((item) => !targetIds.has(item.id))
+}
+
 interface TransactionStore {
   accounts: Account[]
   transactions: Transaction[]
@@ -167,6 +224,19 @@ export const useTransactionStore = create<TransactionStore>()(
         supabaseLoaded: true,
         syncError: null,
       })
+
+      const uploadLocalSnapshot = async (state: TransactionStore) => {
+        await Promise.all(state.accounts.map((account) => dbUpsertAccount(account)))
+        await dbUpsertSettings(state.settings, state.profile)
+        await Promise.all([
+          ...state.customCategories.map((category) => dbUpsertCustomCategory(category)),
+          ...state.transactions.map((tx) => dbUpsertTransaction(tx)),
+          ...state.transfers.map((transfer) => dbUpsertTransfer(transfer)),
+          ...state.budgets.map((budget) => dbUpsertBudget(budget)),
+          ...state.goals.map((goal) => dbUpsertGoal(goal)),
+          ...state.recurring.map((rec) => dbUpsertRecurring(rec)),
+        ])
+      }
 
       return {
         accounts: createDefaultAccounts(),
@@ -412,8 +482,12 @@ export const useTransactionStore = create<TransactionStore>()(
 
         clearAllData: async () => {
           try {
-            await dbClearAllUserData()
-            set(resetState())
+            const cloudCleared = await dbClearAllUserData()
+            const nextState = resetState()
+            if (cloudCleared) {
+              await Promise.all(nextState.accounts.map((account) => dbUpsertAccount(account)))
+            }
+            set(nextState)
             return true
           } catch (error) {
             handleSyncError(error, 'Не удалось очистить данные в облаке.')
@@ -430,33 +504,49 @@ export const useTransactionStore = create<TransactionStore>()(
             }
 
             // Первый запуск: если в облаке нет счетов, сохраняем локальные дефолты.
+            const localState = get()
+            if (!hasUserContent(data) && hasUserContent(localState)) {
+              await uploadLocalSnapshot(localState)
+              set({ supabaseLoaded: true, syncError: null })
+              return
+            }
+
             if (data.accounts.length === 0) {
-              const defaults = get().accounts.length > 0 ? get().accounts : createDefaultAccounts()
+              const defaults = localState.accounts.length > 0 ? localState.accounts : createDefaultAccounts()
               await Promise.all(defaults.map((a) => dbUpsertAccount(a)))
               data.accounts = defaults
             }
 
-            const localCustomCategories = get().customCategories
-            const mergedCustomCategories = [...data.customCategories]
-            const cloudCategoryIds = new Set(data.customCategories.map((category) => category.id))
-            const categoriesToUpload = localCustomCategories.filter((category) => !cloudCategoryIds.has(category.id))
+            const shouldMergeLocal = hasUserContent(localState)
+            const accountsToUpload = getMissingById(localState.accounts, data.accounts, shouldMergeLocal)
+            const transactionsToUpload = getMissingById(localState.transactions, data.transactions, shouldMergeLocal)
+            const transfersToUpload = getMissingById(localState.transfers, data.transfers, shouldMergeLocal)
+            const budgetsToUpload = getMissingById(localState.budgets, data.budgets, shouldMergeLocal)
+            const goalsToUpload = getMissingById(localState.goals, data.goals, shouldMergeLocal)
+            const recurringToUpload = getMissingById(localState.recurring, data.recurring, shouldMergeLocal)
+            const categoriesToUpload = getMissingById(localState.customCategories, data.customCategories, shouldMergeLocal)
 
-            if (categoriesToUpload.length > 0) {
-              await Promise.all(categoriesToUpload.map((category) => dbUpsertCustomCategory(category)))
-              mergedCustomCategories.push(...categoriesToUpload)
-            }
+            await Promise.all([
+              ...accountsToUpload.map((account) => dbUpsertAccount(account)),
+              ...categoriesToUpload.map((category) => dbUpsertCustomCategory(category)),
+              ...transactionsToUpload.map((tx) => dbUpsertTransaction(tx)),
+              ...transfersToUpload.map((transfer) => dbUpsertTransfer(transfer)),
+              ...budgetsToUpload.map((budget) => dbUpsertBudget(budget)),
+              ...goalsToUpload.map((goal) => dbUpsertGoal(goal)),
+              ...recurringToUpload.map((rec) => dbUpsertRecurring(rec)),
+            ])
 
             set({
-              accounts: data.accounts,
-              transactions: data.transactions,
-              transfers: data.transfers,
-              budgets: data.budgets,
-              goals: data.goals,
-              recurring: data.recurring,
-              customCategories: mergedCustomCategories,
-              hiddenCategoryIds: get().hiddenCategoryIds,
-              settings: data.settings ?? get().settings,
-              profile: data.profile ?? get().profile,
+              accounts: mergeById(data.accounts, localState.accounts, shouldMergeLocal),
+              transactions: mergeById(data.transactions, localState.transactions, shouldMergeLocal),
+              transfers: mergeById(data.transfers, localState.transfers, shouldMergeLocal),
+              budgets: mergeById(data.budgets, localState.budgets, shouldMergeLocal),
+              goals: mergeById(data.goals, localState.goals, shouldMergeLocal),
+              recurring: mergeById(data.recurring, localState.recurring, shouldMergeLocal),
+              customCategories: mergeById(data.customCategories, localState.customCategories, shouldMergeLocal),
+              hiddenCategoryIds: localState.hiddenCategoryIds,
+              settings: data.settings ?? localState.settings,
+              profile: data.profile ?? localState.profile,
               supabaseLoaded: true,
               syncError: null,
             })

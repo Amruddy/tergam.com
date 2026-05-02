@@ -10,7 +10,7 @@ import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
 import { getCategoriesByType, getCategoryById } from '@/lib/categories'
 import { getDefaultAccountId } from '@/lib/accounts'
-import { formatCurrency, getMonthKey, cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
+import { formatCurrency, getMonthKey, cn, formatMoneyInput, parsePositiveMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { parseQuickInput } from '@/lib/parseQuick'
 import { Category, TransactionType } from '@/types'
 import { AccountSelect, Btn, IconBtn } from '@/components/ui'
@@ -135,7 +135,7 @@ function QuickTextBar() {
   }
 
   const handleSubmit = () => {
-    if (!preview || !preview.amount) return
+    if (!preview?.amount || preview.amount <= 0) return
     addTransaction({
       type: preview.type,
       amount: preview.amount,
@@ -199,7 +199,7 @@ function QuickTextBar() {
               <motion.button
                 key="btn"
                 onClick={handleSubmit}
-                disabled={!preview?.amount}
+                disabled={!preview?.amount || preview.amount <= 0}
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors disabled:opacity-30"
               >
                 <ArrowRight size={15} />
@@ -209,7 +209,7 @@ function QuickTextBar() {
         </div>
       </div>
       <AnimatePresence>
-        {preview && preview.amount && cat && (
+        {preview && preview.amount && preview.amount > 0 && cat && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -471,8 +471,9 @@ function QuickAddForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!amount || !category || !accountId) return
-    addTransaction({ type, amount: parseMoneyInput(amount), category, accountId, date, description, tags })
+    const parsedAmount = parsePositiveMoneyInput(amount)
+    if (!parsedAmount || !category || !accountId) return
+    addTransaction({ type, amount: parsedAmount, category, accountId, date, description, tags })
     setSaved(true)
     setTimeout(() => { setSaved(false); reset() }, 1200)
   }

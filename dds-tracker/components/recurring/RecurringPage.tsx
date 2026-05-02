@@ -6,7 +6,7 @@ import { Plus, Trash2, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountById, getActiveAccounts, getDefaultAccountId } from '@/lib/accounts'
 import { getCategoryById } from '@/lib/categories'
-import { formatCurrency, cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
+import { formatCurrency, cn, formatMoneyInput, parsePositiveMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { RecurringTransaction, TransactionType, RecurringFrequency } from '@/types'
 import { EmptyState, FormCard, Btn, IconBtn, FieldLabel, inputCls, CategoryGrid, TypeToggle, SectionLabel, AccountSelect, PageHeader } from '@/components/ui'
 
@@ -102,8 +102,9 @@ function AddRecurringForm({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!amount || !category || !accountId) return
-    addRecurring({ type, amount: parseMoneyInput(amount), category, accountId, description, tags: [], frequency, startDate, active: true })
+    const parsedAmount = parsePositiveMoneyInput(amount)
+    if (!parsedAmount || !category || !accountId) return
+    addRecurring({ type, amount: parsedAmount, category, accountId, description, tags: [], frequency, startDate, active: true })
     onClose()
   }
 

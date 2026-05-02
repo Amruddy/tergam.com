@@ -7,7 +7,13 @@ import { getAccountBalance, getActiveAccounts } from '@/lib/accounts'
 import { formatCurrency, getMonthKey } from '@/lib/utils'
 
 export function QuickTools() {
-  const { accounts, budgets, goals, recurring, transactions, transfers, settings } = useTransactionStore()
+  const accounts = useTransactionStore((state) => state.accounts)
+  const budgets = useTransactionStore((state) => state.budgets)
+  const goals = useTransactionStore((state) => state.goals)
+  const recurring = useTransactionStore((state) => state.recurring)
+  const transactions = useTransactionStore((state) => state.transactions)
+  const transfers = useTransactionStore((state) => state.transfers)
+  const currency = useTransactionStore((state) => state.settings.currency)
 
   const now = new Date()
   const thisMonth = getMonthKey(now)
@@ -34,7 +40,7 @@ export function QuickTools() {
       color: '#0ea5e9',
       value: `${activeAccounts.length} шт.`,
       warn: false,
-      sub: formatCurrency(totalBalance, settings.currency),
+      sub: formatCurrency(totalBalance, currency),
     },
     {
       href: '/budgets',
@@ -52,7 +58,7 @@ export function QuickTools() {
       color: '#f59e0b',
       value: goals.length > 0 ? `${goalsPct}% выполнено` : 'Нет целей',
       warn: false,
-      sub: goals.length > 0 ? `${formatCurrency(totalSaved, settings.currency)} / ${formatCurrency(totalTarget, settings.currency)}` : 'Поставьте финансовую цель',
+      sub: goals.length > 0 ? `${formatCurrency(totalSaved, currency)} / ${formatCurrency(totalTarget, currency)}` : 'Поставьте финансовую цель',
     },
     {
       href: '/recurring',

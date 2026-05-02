@@ -4,13 +4,12 @@ import { useEffect } from 'react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { settings } = useTransactionStore()
+  const theme = useTransactionStore((state) => state.settings.theme)
 
   useEffect(() => {
     const html = document.documentElement
-    const theme = settings.theme
     html.classList.toggle('dark', theme === 'dark')
-  }, [settings.theme])
+  }, [theme])
 
   return <>{children}</>
 }
