@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, AlertTriangle, Wallet, TrendingDown, ShieldAlert } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getCategoryById } from '@/lib/categories'
-import { formatCurrency, getMonthKey, cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
+import { formatCurrency, getMonthKey, cn, formatMoneyInput, parsePositiveMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { Budget } from '@/types'
 import { StatStrip, EmptyState, FormCard, Btn, IconBtn, FieldLabel, inputCls, CategoryGrid, PageHeader } from '@/components/ui'
 
@@ -95,8 +95,9 @@ function AddBudgetForm({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!category || !amount) return
-    addBudget({ category, amount: parseMoneyInput(amount), period: 'month' })
+    const parsedAmount = parsePositiveMoneyInput(amount)
+    if (!category || !parsedAmount) return
+    addBudget({ category, amount: parsedAmount, period: 'month' })
     onClose()
   }
 

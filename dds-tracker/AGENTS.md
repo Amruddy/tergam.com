@@ -9,6 +9,13 @@ Use this guide for all work in this repository.
 - Global layout lives in `components/AppShell.tsx`, `components/layout/Navbar.tsx`, and `components/layout/BottomNav.tsx`.
 - State lives in `store/useTransactionStore.ts`.
 - Domain helpers live in `lib/`.
+- Product behavior and feature expectations live in `SPEC.md`.
+
+## Product Spec
+
+- Check `SPEC.md` before changing product behavior, financial logic, category behavior, quick entry, persistence, or major UI flows.
+- Keep `SPEC.md` updated when adding or changing user-visible behavior.
+- If implementation and `SPEC.md` disagree, treat it as a product decision that needs to be resolved intentionally.
 
 ## Local Skills And Agents
 

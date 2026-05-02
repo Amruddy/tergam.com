@@ -5,7 +5,8 @@ import { useTransactionStore } from '@/store/useTransactionStore'
 import { formatCurrency, getMonthKey, formatMonth } from '@/lib/utils'
 
 export function RevenueAreaChart() {
-  const { transactions, settings } = useTransactionStore()
+  const transactions = useTransactionStore((state) => state.transactions)
+  const currency = useTransactionStore((state) => state.settings.currency)
 
   const data = useMemo(() => {
     const months: Record<string, { income: number; expense: number }> = {}
@@ -47,12 +48,12 @@ export function RevenueAreaChart() {
                 <div
                   className="w-full max-w-5 rounded-t-md bg-green-500/75"
                   style={{ height: incomeHeight }}
-                  title={`Доходы: ${formatCurrency(item.income, settings.currency)}`}
+                  title={`Доходы: ${formatCurrency(item.income, currency)}`}
                 />
                 <div
                   className="w-full max-w-5 rounded-t-md bg-red-500/75"
                   style={{ height: expenseHeight }}
-                  title={`Расходы: ${formatCurrency(item.expense, settings.currency)}`}
+                  title={`Расходы: ${formatCurrency(item.expense, currency)}`}
                 />
               </div>
               <div className="truncate text-center text-[10px] text-slate-400 dark:text-gray-500">{item.month}</div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, Edit2, Check, X, Trophy } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
-import { formatCurrency, cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
+import { formatCurrency, cn, formatMoneyInput, parseMoneyInput, parseNonNegativeMoneyInput, parsePositiveMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { Goal } from '@/types'
 import { StatStrip, EmptyState, FormCard, Btn, IconBtn, FieldLabel, inputCls, PageHeader } from '@/components/ui'
 
@@ -143,7 +143,10 @@ function GoalForm({ editing, onClose }: { editing?: Goal; onClose: () => void })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const payload = { name, emoji, color, targetAmount: parseMoneyInput(target), savedAmount: parseMoneyInput(saved), deadline }
+    const targetAmount = parsePositiveMoneyInput(target)
+    const savedAmount = parseNonNegativeMoneyInput(saved)
+    if (!name.trim() || !targetAmount || savedAmount === null || !deadline) return
+    const payload = { name, emoji, color, targetAmount, savedAmount, deadline }
     if (editing) updateGoal(editing.id, payload)
     else addGoal(payload)
     onClose()

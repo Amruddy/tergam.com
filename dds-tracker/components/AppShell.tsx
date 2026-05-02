@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { useTransactionStore } from '@/store/useTransactionStore'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { syncError } = useTransactionStore()
+  const syncError = useTransactionStore((state) => state.syncError)
 
   return (
     <ThemeProvider>
@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span>{syncError}</span>
             </div>
           )}
-          <div className="md:rounded-2xl md:border md:border-slate-200/60 md:bg-white/70 md:p-4 lg:p-5 md:shadow-md dark:md:border-slate-700 dark:md:bg-slate-900">
+          <div className="min-w-0">
             {children}
           </div>
         </div>

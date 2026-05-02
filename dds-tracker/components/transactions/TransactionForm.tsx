@@ -6,7 +6,7 @@ import { X, Plus, Tag, Check } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getCategoriesByType } from '@/lib/categories'
 import { getActiveAccounts, getDefaultAccountId } from '@/lib/accounts'
-import { cn, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
+import { cn, formatMoneyInput, parsePositiveMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { Transaction, TransactionType } from '@/types'
 import { AccountSelect } from '@/components/ui'
 
@@ -63,9 +63,10 @@ export function TransactionForm({ editingTx, onClose }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!amount || !category || !date || !accountId) return
+    const parsedAmount = parsePositiveMoneyInput(amount)
+    if (!parsedAmount || !category || !date || !accountId) return
 
-    const payload = { type, amount: parseMoneyInput(amount), category, accountId, date, description, tags }
+    const payload = { type, amount: parsedAmount, category, accountId, date, description, tags }
 
     if (editingTx) {
       updateTransaction(editingTx.id, payload)

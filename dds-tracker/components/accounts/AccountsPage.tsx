@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Archive, ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Landmark, PencilLine, Plus, Trash2, Wallet } from 'lucide-react'
 import { useTransactionStore } from '@/store/useTransactionStore'
 import { getAccountBalance, getAccountMonthChange, getAccountTypeLabel, getActiveAccounts } from '@/lib/accounts'
-import { formatCurrency, cn, getMonthKey, formatDate, formatMoneyInput, parseMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
+import { formatCurrency, cn, getMonthKey, formatDate, formatMoneyInput, parseMoneyInput, parsePositiveMoneyInput, sanitizeMoneyInput } from '@/lib/utils'
 import { Account, AccountType } from '@/types'
 import { Btn, EmptyState, FieldLabel, FormCard, IconBtn, PageHeader, SectionLabel, StatStrip, inputCls } from '@/components/ui'
 import { getCategoryById } from '@/lib/categories'
@@ -114,11 +114,12 @@ function TransferForm({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!fromAccountId || !toAccountId || fromAccountId === toAccountId || !amount) return
+    const parsedAmount = parsePositiveMoneyInput(amount)
+    if (!fromAccountId || !toAccountId || fromAccountId === toAccountId || !parsedAmount) return
     addTransfer({
       fromAccountId,
       toAccountId,
-      amount: parseMoneyInput(amount),
+      amount: parsedAmount,
       date,
       description: description.trim(),
     })

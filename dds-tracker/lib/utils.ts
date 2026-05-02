@@ -54,6 +54,16 @@ export function parseMoneyInput(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+export function parsePositiveMoneyInput(value: string): number | null {
+  const parsed = parseMoneyInput(value)
+  return parsed > 0 ? parsed : null
+}
+
+export function parseNonNegativeMoneyInput(value: string): number | null {
+  const parsed = parseMoneyInput(value)
+  return parsed >= 0 ? parsed : null
+}
+
 export function formatMoneyInput(value: string): string {
   const sanitized = sanitizeMoneyInput(value, { allowNegative: value.startsWith('-') })
   const negative = sanitized.startsWith('-')

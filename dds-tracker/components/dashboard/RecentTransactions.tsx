@@ -9,7 +9,9 @@ import { getAccountById } from '@/lib/accounts'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 
 export function RecentTransactions() {
-  const { accounts, transactions, settings } = useTransactionStore()
+  const accounts = useTransactionStore((state) => state.accounts)
+  const transactions = useTransactionStore((state) => state.transactions)
+  const currency = useTransactionStore((state) => state.settings.currency)
 
   const recent = useMemo(
     () => [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10),
@@ -57,7 +59,7 @@ export function RecentTransactions() {
               </div>
               <div className="text-right flex-shrink-0">
                 <div className={cn('text-sm font-semibold', tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
-                  {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount, settings.currency)}
+                  {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount, currency)}
                 </div>
                 <div className="text-xs text-slate-400 dark:text-gray-600 mt-0.5">{formatDate(tx.date)}</div>
               </div>

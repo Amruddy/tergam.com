@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -56,11 +55,8 @@ export function StatStrip({
   return (
     <div className={`grid ${cols} gap-3`}>
       {items.map(({ label, value, icon: Icon, color }, i) => (
-        <motion.div
+        <div
           key={label}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.05 }}
           className="min-w-0 bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl p-3.5 md:p-4 space-y-2 transition-colors duration-300"
         >
           <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${color}18` }}>
@@ -70,7 +66,7 @@ export function StatStrip({
             <div className="text-[10px] md:text-xs text-slate-400 dark:text-gray-500 leading-tight break-words">{label}</div>
             <div className="text-sm md:text-[15px] font-bold text-slate-900 dark:text-white mt-0.5 leading-tight break-words">{value}</div>
           </div>
-        </motion.div>
+        </div>
       ))}
     </div>
   )
@@ -85,9 +81,7 @@ export function EmptyState({
   action?: React.ReactNode
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       className="bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl p-10 md:p-14 flex flex-col items-center text-center gap-3 transition-colors duration-300"
     >
       <span className="text-5xl">{emoji}</span>
@@ -96,7 +90,7 @@ export function EmptyState({
         <p className="text-xs text-slate-400 dark:text-gray-600 max-w-[220px]">{subtitle}</p>
       </div>
       {action}
-    </motion.div>
+    </div>
   )
 }
 
@@ -108,11 +102,7 @@ export function FormCard({
   children: React.ReactNode
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -6 }}
-      transition={{ duration: 0.18 }}
+    <div
       className="bg-white dark:bg-[#13131a] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl overflow-hidden transition-colors duration-300 max-h-[min(88vh,760px)] flex flex-col"
     >
       <div className="flex items-center justify-between px-4 md:px-5 py-3 border-b border-slate-100 dark:border-white/[0.05]">
@@ -125,7 +115,7 @@ export function FormCard({
         </button>
       </div>
       <div className="p-4 md:p-5 space-y-4 overflow-y-auto">{children}</div>
-    </motion.div>
+    </div>
   )
 }
 
