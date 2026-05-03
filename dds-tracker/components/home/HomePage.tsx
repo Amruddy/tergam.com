@@ -51,10 +51,10 @@ function SummaryStrip() {
   return (
     <div className="grid grid-cols-3 gap-1.5 sm:gap-2 xl:gap-3">
       {[
-        { label: 'Доходы', value: stats.income, icon: TrendingUp, color: '#22c55e', sign: '+' },
-        { label: 'Расходы', value: stats.expense, icon: TrendingDown, color: '#ef4444', sign: '−' },
-        { label: 'Баланс', value: stats.balance, icon: Wallet, color: '#6366f1', sign: '' },
-      ].map(({ label, value, icon: Icon, color, sign }, i) => (
+        { label: 'Доходы', scope: 'за месяц', value: stats.income, icon: TrendingUp, color: '#22c55e', sign: '+' },
+        { label: 'Расходы', scope: 'за месяц', value: stats.expense, icon: TrendingDown, color: '#ef4444', sign: '−' },
+        { label: 'Баланс', scope: 'всего', value: stats.balance, icon: Wallet, color: '#6366f1', sign: '' },
+      ].map(({ label, scope, value, icon: Icon, color, sign }, i) => (
         <motion.div
           key={label}
           initial={{ opacity: 0, y: 12 }}
@@ -65,7 +65,10 @@ function SummaryStrip() {
           <div className="w-6 h-6 sm:w-7 sm:h-7 xl:w-8 xl:h-8 rounded-lg mx-auto mb-1.5 sm:mb-2 flex items-center justify-center" style={{ background: `${color}18` }}>
             <Icon size={14} style={{ color }} />
           </div>
-          <div className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-0.5 leading-tight">{label}</div>
+          <div className="text-[13px] sm:text-xs text-slate-400 dark:text-gray-500 mb-0.5 leading-tight">
+            <span className="block">{label}</span>
+            <span className="block text-[10px] font-medium text-slate-300 dark:text-gray-600">{scope}</span>
+          </div>
           <div className="text-[15px] sm:text-sm xl:text-base font-bold text-slate-900 dark:text-white leading-tight break-words">
             {sign}{formatCurrency(Math.abs(value), settings.currency)}
           </div>
@@ -343,6 +346,7 @@ function QuickAddForm() {
   const [replacementCategoryId, setReplacementCategoryId] = useState('other')
 
   const availableCategories = getCategoriesByType(type)
+  const customCategoryIds = useMemo(() => new Set(customCategories.map((item) => item.id)), [customCategories])
   const visibleCategories = useMemo(() => {
     const preferredIds = preferredCategoryIds[type]
     return preferredIds
@@ -350,6 +354,15 @@ function QuickAddForm() {
       .filter((cat): cat is NonNullable<typeof cat> => Boolean(cat))
       .slice(0, HOME_CATEGORY_VISIBLE_LIMIT)
   }, [availableCategories, preferredCategoryIds, type])
+
+  useEffect(() => {
+    setPreferredCategoryIds((current) => {
+      const availableIds = new Set(availableCategories.map((cat) => cat.id))
+      const nextIds = current[type].filter((id) => availableIds.has(id))
+      if (nextIds.length === current[type].length) return current
+      return { ...current, [type]: nextIds }
+    })
+  }, [availableCategories, type])
 
   useEffect(() => {
     if (!accountId && activeAccounts.length > 0) {
@@ -582,7 +595,7 @@ function QuickAddForm() {
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-white/8 bg-white/70 dark:bg-white/[0.03] px-3 py-2.5">
                   <div>
                     <p className="text-sm font-medium text-slate-900 dark:text-white">Своя категория</p>
-                    <p className="text-xs text-slate-400 dark:text-gray-500">Скрыта на главной и доступна только здесь</p>
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Добавится в быстрый выбор для текущего типа</p>
                   </div>
                   <button
                     type="button"
@@ -662,9 +675,11 @@ function QuickAddForm() {
                   )}
                 </AnimatePresence>
                 {categoryToRemove && (
-                  <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.04] p-3 space-y-3">
+                  <div className="rounded-2xl border border-red-500/20 bg-white dark:bg-white/[0.03] p-3 space-y-3">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle size={16} className="mt-0.5 flex-shrink-0 text-red-500" />
+                      <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
+                        <AlertTriangle size={15} />
+                      </span>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 dark:text-white">
                           {customCategories.some((item) => item.id === categoryToRemove.id) ? 'Удалить категорию' : 'Скрыть категорию'}
@@ -706,10 +721,11 @@ function QuickAddForm() {
                     </div>
                   </div>
                 )}
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-4 gap-1.5">
                   {availableCategories.map((cat) => {
                     const selectedForHome = preferredCategoryIds[type].includes(cat.id)
                     const reachedLimit = !selectedForHome && preferredCategoryIds[type].length >= HOME_CATEGORY_VISIBLE_LIMIT
+                    const isCustom = customCategoryIds.has(cat.id)
                     return (
                       <div key={cat.id} className="relative">
                         <button
@@ -717,7 +733,7 @@ function QuickAddForm() {
                           onClick={() => togglePreferredCategory(cat.id)}
                           disabled={reachedLimit}
                           className={cn(
-                            'flex h-full min-h-[72px] w-full flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center transition-all',
+                            'flex h-full min-h-[66px] w-full flex-col items-center justify-center gap-1 rounded-xl border p-1.5 text-center transition-all sm:min-h-[72px] sm:p-2',
                             selectedForHome
                               ? 'border-2 text-slate-900 dark:text-white shadow-sm'
                               : 'border-slate-200 dark:border-white/8 text-slate-500 dark:text-gray-500 hover:border-slate-300 dark:hover:border-white/15',
@@ -728,13 +744,13 @@ function QuickAddForm() {
                           <span className="flex h-7 w-7 items-center justify-center text-[17px] leading-none sm:h-8 sm:w-8 sm:text-[18px]">{cat.emoji}</span>
                           <span className="min-h-[24px] max-w-full overflow-hidden break-words text-[9px] leading-[1.15] font-medium">{cat.name}</span>
                         </button>
-                        {cat.id !== 'other' && (
+                        {isCustom && (
                           <IconBtn
                             type="button"
                             variant="danger"
-                            title={customCategories.some((item) => item.id === cat.id) ? 'Удалить категорию' : 'Скрыть категорию'}
+                            title="Удалить категорию"
                             onClick={() => beginRemoveCategory(cat)}
-                            className="absolute right-1 top-1 h-6 w-6 rounded-lg bg-white/90 dark:bg-[#13131a]/90"
+                            className="absolute right-0.5 top-0.5 h-6 w-6 rounded-lg bg-white/90 dark:bg-[#13131a]/90"
                           >
                             <Trash2 size={11} />
                           </IconBtn>
