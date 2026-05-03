@@ -144,6 +144,12 @@ function getMissingById<T extends { id: string }>(sourceItems: T[], targetItems:
   return sourceItems.filter((item) => !targetIds.has(item.id))
 }
 
+function excludeDeletedCustomCategories(categories: Category[], deletedIds: string[]) {
+  if (deletedIds.length === 0) return categories
+  const deleted = new Set(deletedIds)
+  return categories.filter((category) => !deleted.has(category.id))
+}
+
 interface TransactionStore {
   accounts: Account[]
   transactions: Transaction[]
@@ -153,6 +159,7 @@ interface TransactionStore {
   recurring: RecurringTransaction[]
   customCategories: Category[]
   hiddenCategoryIds: string[]
+  deletedCustomCategoryIds: string[]
   profile: UserProfile
   settings: Settings
   initialized: boolean
@@ -218,6 +225,7 @@ export const useTransactionStore = create<TransactionStore>()(
         recurring: [],
         customCategories: [],
         hiddenCategoryIds: [],
+        deletedCustomCategoryIds: [],
         profile: defaultProfile(),
         settings: defaultSettings(),
         initialized: true,
@@ -247,6 +255,7 @@ export const useTransactionStore = create<TransactionStore>()(
         recurring: [],
         customCategories: [],
         hiddenCategoryIds: [],
+        deletedCustomCategoryIds: [],
         profile: defaultProfile(),
         settings: defaultSettings(),
         initialized: false,
@@ -416,7 +425,10 @@ export const useTransactionStore = create<TransactionStore>()(
             id: generateId(),
             custom: true,
           }
-          set((s) => ({ customCategories: [...s.customCategories, newCategory] }))
+          set((s) => ({
+            customCategories: [...s.customCategories, newCategory],
+            deletedCustomCategoryIds: s.deletedCustomCategoryIds.filter((id) => id !== newCategory.id),
+          }))
           syncTask(() => dbUpsertCustomCategory(newCategory), 'Не удалось сохранить категорию в облаке.')
           return newCategory
         },
@@ -446,6 +458,9 @@ export const useTransactionStore = create<TransactionStore>()(
             hiddenCategoryIds: isCustom || state.hiddenCategoryIds.includes(categoryId)
               ? state.hiddenCategoryIds
               : [...state.hiddenCategoryIds, categoryId],
+            deletedCustomCategoryIds: isCustom && !state.deletedCustomCategoryIds.includes(categoryId)
+              ? [...state.deletedCustomCategoryIds, categoryId]
+              : state.deletedCustomCategoryIds,
           })
 
           syncTask(async () => {
@@ -525,6 +540,10 @@ export const useTransactionStore = create<TransactionStore>()(
             const goalsToUpload = getMissingById(localState.goals, data.goals, shouldMergeLocal)
             const recurringToUpload = getMissingById(localState.recurring, data.recurring, shouldMergeLocal)
             const categoriesToUpload = getMissingById(localState.customCategories, data.customCategories, shouldMergeLocal)
+            const deletedCustomCategoryIds = Array.isArray(localState.deletedCustomCategoryIds)
+              ? localState.deletedCustomCategoryIds
+              : []
+            const cloudCustomCategories = excludeDeletedCustomCategories(data.customCategories, deletedCustomCategoryIds)
 
             await Promise.all([
               ...accountsToUpload.map((account) => dbUpsertAccount(account)),
@@ -543,8 +562,12 @@ export const useTransactionStore = create<TransactionStore>()(
               budgets: mergeById(data.budgets, localState.budgets, shouldMergeLocal),
               goals: mergeById(data.goals, localState.goals, shouldMergeLocal),
               recurring: mergeById(data.recurring, localState.recurring, shouldMergeLocal),
-              customCategories: mergeById(data.customCategories, localState.customCategories, shouldMergeLocal),
+              customCategories: excludeDeletedCustomCategories(
+                mergeById(cloudCustomCategories, localState.customCategories, shouldMergeLocal),
+                deletedCustomCategoryIds,
+              ),
               hiddenCategoryIds: localState.hiddenCategoryIds,
+              deletedCustomCategoryIds,
               settings: data.settings ?? localState.settings,
               profile: data.profile ?? localState.profile,
               supabaseLoaded: true,
@@ -565,7 +588,7 @@ export const useTransactionStore = create<TransactionStore>()(
     },
     {
       name: 'dds-tracker-store',
-      version: 6,
+      version: 7,
       migrate: (persistedState: any) => {
         const baseAccounts: Account[] = Array.isArray(persistedState?.accounts) && persistedState.accounts.length > 0
           ? persistedState.accounts.map((a: any) => ({ ...a, archived: a.archived ?? false }))
@@ -587,6 +610,7 @@ export const useTransactionStore = create<TransactionStore>()(
           syncError: null,
           customCategories: Array.isArray(persistedState?.customCategories) ? persistedState.customCategories : [],
           hiddenCategoryIds: Array.isArray(persistedState?.hiddenCategoryIds) ? persistedState.hiddenCategoryIds : [],
+          deletedCustomCategoryIds: Array.isArray(persistedState?.deletedCustomCategoryIds) ? persistedState.deletedCustomCategoryIds : [],
           transfers,
           transactions: transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId })),
           recurring: recurring.map((rec: any) => ({ ...rec, accountId: rec.accountId || fallbackId })),
