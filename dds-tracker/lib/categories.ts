@@ -24,9 +24,18 @@ export const CATEGORIES: Category[] = [
   { id: 'other', name: 'Прочее', emoji: '✨', color: '#94a3b8', type: 'both' },
 ]
 
+const uniqueCategoriesById = (categories: Category[]): Category[] => {
+  const seen = new Set<string>()
+  return categories.filter((category) => {
+    if (seen.has(category.id)) return false
+    seen.add(category.id)
+    return true
+  })
+}
+
 export const getAllCategories = (options: { includeHidden?: boolean } = {}): Category[] => {
   const { customCategories = [], hiddenCategoryIds = [] } = useTransactionStore.getState()
-  const categories = [...CATEGORIES, ...customCategories]
+  const categories = uniqueCategoriesById([...CATEGORIES, ...customCategories])
   if (options.includeHidden) return categories
   return categories.filter((category) => !hiddenCategoryIds.includes(category.id))
 }

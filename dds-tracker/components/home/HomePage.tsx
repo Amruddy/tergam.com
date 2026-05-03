@@ -23,6 +23,15 @@ const HOME_CATEGORY_VISIBLE_LIMIT = HOME_CATEGORY_LIMIT - 1
 const HOME_CATEGORY_DEFAULT_COUNT = 4
 const CUSTOM_CATEGORY_COLORS = ['#6366f1', '#ec4899', '#06b6d4', '#22c55e', '#f97316', '#eab308']
 
+const uniqueCategoryIds = (ids: string[]) => Array.from(new Set(ids))
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, index) => id === b[index])
+const getDefaultHomeCategoryIds = (type: TransactionType) =>
+  getCategoriesByType(type).slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id)
+const normalizeHomeCategoryIds = (ids: string[], type: TransactionType) => {
+  const availableIds = new Set(getCategoriesByType(type).map((cat) => cat.id))
+  return uniqueCategoryIds(ids).filter((id) => availableIds.has(id)).slice(0, HOME_CATEGORY_VISIBLE_LIMIT)
+}
+
 type BrowserSpeechRecognition = {
   continuous: boolean
   interimResults: boolean
@@ -339,8 +348,8 @@ function QuickAddForm() {
   const [customCategoryEmoji, setCustomCategoryEmoji] = useState('')
   const [customCategoryColor, setCustomCategoryColor] = useState(CUSTOM_CATEGORY_COLORS[0])
   const [preferredCategoryIds, setPreferredCategoryIds] = useState<Record<TransactionType, string[]>>({
-    expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
-    income: getCategoriesByType('income').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
+    expense: getDefaultHomeCategoryIds('expense'),
+    income: getDefaultHomeCategoryIds('income'),
   })
   const [categoryToRemove, setCategoryToRemove] = useState<Category | null>(null)
   const [replacementCategoryId, setReplacementCategoryId] = useState('other')
@@ -348,18 +357,19 @@ function QuickAddForm() {
   const availableCategories = getCategoriesByType(type)
   const customCategoryIds = useMemo(() => new Set(customCategories.map((item) => item.id)), [customCategories])
   const visibleCategories = useMemo(() => {
-    const preferredIds = preferredCategoryIds[type]
+    const preferredIds = uniqueCategoryIds(preferredCategoryIds[type])
     return preferredIds
       .map((id) => availableCategories.find((cat) => cat.id === id))
       .filter((cat): cat is NonNullable<typeof cat> => Boolean(cat))
       .slice(0, HOME_CATEGORY_VISIBLE_LIMIT)
   }, [availableCategories, preferredCategoryIds, type])
+  const selectedPreferredCount = uniqueCategoryIds(preferredCategoryIds[type]).length
 
   useEffect(() => {
     setPreferredCategoryIds((current) => {
       const availableIds = new Set(availableCategories.map((cat) => cat.id))
-      const nextIds = current[type].filter((id) => availableIds.has(id))
-      if (nextIds.length === current[type].length) return current
+      const nextIds = uniqueCategoryIds(current[type]).filter((id) => availableIds.has(id)).slice(0, HOME_CATEGORY_VISIBLE_LIMIT)
+      if (sameIds(nextIds, current[type])) return current
       return { ...current, [type]: nextIds }
     })
   }, [availableCategories, type])
@@ -375,8 +385,8 @@ function QuickAddForm() {
     const saved = window.localStorage.getItem(HOME_CATEGORY_PRESET_KEY)
     if (!saved) {
       setPreferredCategoryIds({
-        expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
-        income: getCategoriesByType('income').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
+        expense: getDefaultHomeCategoryIds('expense'),
+        income: getDefaultHomeCategoryIds('income'),
       })
       return
     }
@@ -384,13 +394,13 @@ function QuickAddForm() {
     try {
       const parsed = JSON.parse(saved) as Partial<Record<TransactionType, string[]>>
       setPreferredCategoryIds({
-        expense: Array.isArray(parsed.expense) ? parsed.expense.slice(0, HOME_CATEGORY_VISIBLE_LIMIT) : getCategoriesByType('expense').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
-        income: Array.isArray(parsed.income) ? parsed.income.slice(0, HOME_CATEGORY_VISIBLE_LIMIT) : getCategoriesByType('income').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
+        expense: Array.isArray(parsed.expense) ? normalizeHomeCategoryIds(parsed.expense, 'expense') : getDefaultHomeCategoryIds('expense'),
+        income: Array.isArray(parsed.income) ? normalizeHomeCategoryIds(parsed.income, 'income') : getDefaultHomeCategoryIds('income'),
       })
     } catch {
       setPreferredCategoryIds({
-        expense: getCategoriesByType('expense').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
-        income: getCategoriesByType('income').slice(0, HOME_CATEGORY_DEFAULT_COUNT).map((cat) => cat.id),
+        expense: getDefaultHomeCategoryIds('expense'),
+        income: getDefaultHomeCategoryIds('income'),
       })
     }
   }, [])
@@ -417,7 +427,7 @@ function QuickAddForm() {
 
   const togglePreferredCategory = (categoryId: string) => {
     setPreferredCategoryIds((current) => {
-      const currentIds = current[type]
+      const currentIds = uniqueCategoryIds(current[type])
       const isSelected = currentIds.includes(categoryId)
 
       if (isSelected) {
@@ -436,21 +446,22 @@ function QuickAddForm() {
     })
   }
 
-  const handleCreateCustomCategory = () => {
+  const handleCreateCustomCategory = async () => {
     const name = customCategoryName.trim()
     if (!name) return
 
-    const nextCategory = addCustomCategory({
+    const nextCategory = await addCustomCategory({
       name,
       emoji: customCategoryEmoji.trim() || '✨',
       color: customCategoryColor,
       type,
     })
+    if (!nextCategory) return
 
     setCategory(nextCategory.id)
     setPreferredCategoryIds((current) => ({
       ...current,
-      [type]: [nextCategory.id, ...current[type].filter((id) => id !== nextCategory.id)].slice(0, HOME_CATEGORY_VISIBLE_LIMIT),
+      [type]: [nextCategory.id, ...uniqueCategoryIds(current[type]).filter((id) => id !== nextCategory.id)].slice(0, HOME_CATEGORY_VISIBLE_LIMIT),
     }))
     setShowCustomCategoryForm(false)
     setCustomCategoryName('')
@@ -471,9 +482,10 @@ function QuickAddForm() {
     setCategoryToRemove(cat)
   }
 
-  const confirmRemoveCategory = () => {
+  const confirmRemoveCategory = async () => {
     if (!categoryToRemove) return
-    removeCategory(categoryToRemove.id, replacementCategoryId)
+    const removed = await removeCategory(categoryToRemove.id, replacementCategoryId)
+    if (!removed) return
     setPreferredCategoryIds((current) => ({
       expense: current.expense.filter((id) => id !== categoryToRemove.id),
       income: current.income.filter((id) => id !== categoryToRemove.id),
@@ -579,7 +591,7 @@ function QuickAddForm() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-slate-900 dark:text-white">Быстрые категории</p>
-                    <p className="text-xs text-slate-400 dark:text-gray-500">Выбрано {preferredCategoryIds[type].length} из {HOME_CATEGORY_VISIBLE_LIMIT}</p>
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Выбрано {selectedPreferredCount} из {HOME_CATEGORY_VISIBLE_LIMIT}</p>
                   </div>
                   <button
                     type="button"
@@ -724,7 +736,7 @@ function QuickAddForm() {
                 <div className="grid grid-cols-4 gap-1.5">
                   {availableCategories.map((cat) => {
                     const selectedForHome = preferredCategoryIds[type].includes(cat.id)
-                    const reachedLimit = !selectedForHome && preferredCategoryIds[type].length >= HOME_CATEGORY_VISIBLE_LIMIT
+                    const reachedLimit = !selectedForHome && selectedPreferredCount >= HOME_CATEGORY_VISIBLE_LIMIT
                     const isCustom = customCategoryIds.has(cat.id)
                     return (
                       <div key={cat.id} className="relative">

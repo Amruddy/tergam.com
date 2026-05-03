@@ -291,9 +291,9 @@ export const dbUpsertRecurring = async (r: RecurringTransaction) => {
 
 export const dbUpsertCustomCategory = async (category: Category) => {
   const userId = await getUserId()
-  if (!userId) return
+  if (!userId) throw new Error('Custom categories require Supabase authentication.')
   const supabase = getSupabase()
-  if (!supabase) return
+  if (!supabase) throw new Error('Custom categories require Supabase configuration.')
 
   const { error } = await supabase.from('custom_categories').upsert({ ...fromCategory(category), user_id: userId })
   if (!error) return
@@ -305,9 +305,9 @@ export const dbUpsertCustomCategory = async (category: Category) => {
 
 export const dbDeleteCustomCategory = async (id: string) => {
   const userId = await getUserId()
-  if (!userId) return
+  if (!userId) throw new Error('Custom categories require Supabase authentication.')
   const supabase = getSupabase()
-  if (!supabase) return
+  if (!supabase) throw new Error('Custom categories require Supabase configuration.')
 
   const { error } = await supabase.from('custom_categories').delete().eq('id', id).eq('user_id', userId)
   if (!error) return

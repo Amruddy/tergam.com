@@ -102,6 +102,80 @@ function accountsMatchDefaultShape(accounts: Account[]) {
   })
 }
 
+function isDefaultAccountShape(account: Account) {
+  const defaults = createDefaultAccounts()
+  const defaultAccount = defaults.find((item) => item.type === account.type)
+
+  return Boolean(defaultAccount) &&
+    account.name === defaultAccount?.name &&
+    account.emoji === defaultAccount?.emoji &&
+    account.color === defaultAccount?.color &&
+    account.initialBalance === defaultAccount?.initialBalance
+}
+
+function normalizeDefaultAccountDuplicates(
+  accountsInput: Account[],
+  transactionsInput: Transaction[],
+  transfersInput: Transfer[],
+  recurringInput: RecurringTransaction[],
+) {
+  const accountByType = new Map<Account['type'], Account>()
+  const idMap = new Map<string, string>()
+  const removedAccountIds: string[] = []
+  const replacedAccountIds: { fromId: string; toId: string }[] = []
+  const accounts: Account[] = []
+
+  accountsInput.forEach((account) => {
+    const normalizedAccount = { ...account, archived: account.archived ?? false }
+
+    if (!isDefaultAccountShape(normalizedAccount)) {
+      accounts.push(normalizedAccount)
+      return
+    }
+
+    const existing = accountByType.get(normalizedAccount.type)
+    if (!existing) {
+      accountByType.set(normalizedAccount.type, normalizedAccount)
+      accounts.push(normalizedAccount)
+      return
+    }
+
+    idMap.set(normalizedAccount.id, existing.id)
+    removedAccountIds.push(normalizedAccount.id)
+    replacedAccountIds.push({ fromId: normalizedAccount.id, toId: existing.id })
+  })
+
+  if (idMap.size === 0) {
+    return {
+      accounts,
+      transactions: transactionsInput,
+      transfers: transfersInput,
+      recurring: recurringInput,
+      removedAccountIds,
+      replacedAccountIds,
+    }
+  }
+
+  return {
+    accounts,
+    transactions: transactionsInput.map((tx) => ({
+      ...tx,
+      accountId: idMap.get(tx.accountId) ?? tx.accountId,
+    })),
+    transfers: transfersInput.map((transfer) => ({
+      ...transfer,
+      fromAccountId: idMap.get(transfer.fromAccountId) ?? transfer.fromAccountId,
+      toAccountId: idMap.get(transfer.toAccountId) ?? transfer.toAccountId,
+    })),
+    recurring: recurringInput.map((rec) => ({
+      ...rec,
+      accountId: idMap.get(rec.accountId) ?? rec.accountId,
+    })),
+    removedAccountIds,
+    replacedAccountIds,
+  }
+}
+
 function hasUserContent(state: {
   accounts: Account[]
   transactions: Transaction[]
@@ -118,7 +192,6 @@ function hasUserContent(state: {
     state.budgets.length > 0 ||
     state.goals.length > 0 ||
     state.recurring.length > 0 ||
-    state.customCategories.length > 0 ||
     (state.accounts.length > 0 && !accountsMatchDefaultShape(state.accounts)) ||
     Boolean(state.profile?.fullName || state.profile?.email || state.profile?.phone || state.profile?.city) ||
     Boolean(state.settings && (state.settings.currency !== 'RUB' || state.settings.theme !== 'light'))
@@ -144,12 +217,6 @@ function getMissingById<T extends { id: string }>(sourceItems: T[], targetItems:
   return sourceItems.filter((item) => !targetIds.has(item.id))
 }
 
-function excludeDeletedCustomCategories(categories: Category[], deletedIds: string[]) {
-  if (deletedIds.length === 0) return categories
-  const deleted = new Set(deletedIds)
-  return categories.filter((category) => !deleted.has(category.id))
-}
-
 interface TransactionStore {
   accounts: Account[]
   transactions: Transaction[]
@@ -159,7 +226,6 @@ interface TransactionStore {
   recurring: RecurringTransaction[]
   customCategories: Category[]
   hiddenCategoryIds: string[]
-  deletedCustomCategoryIds: string[]
   profile: UserProfile
   settings: Settings
   initialized: boolean
@@ -189,8 +255,8 @@ interface TransactionStore {
   updateRecurring: (id: string, r: Partial<Omit<RecurringTransaction, 'id' | 'createdAt'>>) => void
   deleteRecurring: (id: string) => void
   applyRecurring: () => void
-  addCustomCategory: (category: Omit<Category, 'id' | 'custom'>) => Category
-  removeCategory: (categoryId: string, replacementCategoryId?: string) => void
+  addCustomCategory: (category: Omit<Category, 'id' | 'custom'>) => Promise<Category | null>
+  removeCategory: (categoryId: string, replacementCategoryId?: string) => Promise<boolean>
 
   updateSettings: (s: Partial<Settings>) => void
   updateProfile: (p: Partial<UserProfile>) => void
@@ -225,7 +291,6 @@ export const useTransactionStore = create<TransactionStore>()(
         recurring: [],
         customCategories: [],
         hiddenCategoryIds: [],
-        deletedCustomCategoryIds: [],
         profile: defaultProfile(),
         settings: defaultSettings(),
         initialized: true,
@@ -237,7 +302,6 @@ export const useTransactionStore = create<TransactionStore>()(
         await Promise.all(state.accounts.map((account) => dbUpsertAccount(account)))
         await dbUpsertSettings(state.settings, state.profile)
         await Promise.all([
-          ...state.customCategories.map((category) => dbUpsertCustomCategory(category)),
           ...state.transactions.map((tx) => dbUpsertTransaction(tx)),
           ...state.transfers.map((transfer) => dbUpsertTransfer(transfer)),
           ...state.budgets.map((budget) => dbUpsertBudget(budget)),
@@ -255,7 +319,6 @@ export const useTransactionStore = create<TransactionStore>()(
         recurring: [],
         customCategories: [],
         hiddenCategoryIds: [],
-        deletedCustomCategoryIds: [],
         profile: defaultProfile(),
         settings: defaultSettings(),
         initialized: false,
@@ -419,21 +482,26 @@ export const useTransactionStore = create<TransactionStore>()(
           }
         },
 
-        addCustomCategory: (category) => {
+        addCustomCategory: async (category) => {
           const newCategory: Category = {
             ...category,
             id: generateId(),
             custom: true,
           }
-          set((s) => ({
-            customCategories: [...s.customCategories, newCategory],
-            deletedCustomCategoryIds: s.deletedCustomCategoryIds.filter((id) => id !== newCategory.id),
-          }))
-          syncTask(() => dbUpsertCustomCategory(newCategory), 'Не удалось сохранить категорию в облаке.')
-          return newCategory
+          try {
+            await dbUpsertCustomCategory(newCategory)
+            set((s) => ({
+              customCategories: [newCategory, ...s.customCategories.filter((item) => item.id !== newCategory.id)],
+              syncError: null,
+            }))
+            return newCategory
+          } catch (error) {
+            handleSyncError(error, 'Не удалось сохранить категорию в облаке.')
+            return null
+          }
         },
 
-        removeCategory: (categoryId, replacementCategoryId = 'other') => {
+        removeCategory: async (categoryId, replacementCategoryId = 'other') => {
           const state = get()
           const isCustom = state.customCategories.some((category) => category.id === categoryId)
           const replacement = replacementCategoryId === categoryId ? 'other' : replacementCategoryId
@@ -448,22 +516,7 @@ export const useTransactionStore = create<TransactionStore>()(
             rec.category === categoryId ? { ...rec, category: replacement } : rec
           ))
 
-          set({
-            transactions: nextTransactions,
-            budgets: nextBudgets,
-            recurring: nextRecurring,
-            customCategories: isCustom
-              ? state.customCategories.filter((category) => category.id !== categoryId)
-              : state.customCategories,
-            hiddenCategoryIds: isCustom || state.hiddenCategoryIds.includes(categoryId)
-              ? state.hiddenCategoryIds
-              : [...state.hiddenCategoryIds, categoryId],
-            deletedCustomCategoryIds: isCustom && !state.deletedCustomCategoryIds.includes(categoryId)
-              ? [...state.deletedCustomCategoryIds, categoryId]
-              : state.deletedCustomCategoryIds,
-          })
-
-          syncTask(async () => {
+          try {
             await Promise.all([
               ...nextTransactions
                 .filter((tx, index) => tx !== state.transactions[index])
@@ -476,7 +529,23 @@ export const useTransactionStore = create<TransactionStore>()(
                 .map((rec) => dbUpsertRecurring(rec)),
               ...(isCustom ? [dbDeleteCustomCategory(categoryId)] : []),
             ])
-          }, 'Не удалось обновить категории в облаке.')
+            set({
+              transactions: nextTransactions,
+              budgets: nextBudgets,
+              recurring: nextRecurring,
+              customCategories: isCustom
+                ? state.customCategories.filter((category) => category.id !== categoryId)
+                : state.customCategories,
+              hiddenCategoryIds: isCustom || state.hiddenCategoryIds.includes(categoryId)
+                ? state.hiddenCategoryIds
+                : [...state.hiddenCategoryIds, categoryId],
+              syncError: null,
+            })
+            return true
+          } catch (error) {
+            handleSyncError(error, 'Не удалось обновить категории в облаке.')
+            return false
+          }
         },
 
         updateSettings: (s) => {
@@ -521,8 +590,27 @@ export const useTransactionStore = create<TransactionStore>()(
             // Первый запуск: если в облаке нет счетов, сохраняем локальные дефолты.
             const localState = get()
             if (!hasUserContent(data) && hasUserContent(localState)) {
-              await uploadLocalSnapshot(localState)
-              set({ supabaseLoaded: true, syncError: null })
+              const normalized = normalizeDefaultAccountDuplicates(
+                localState.accounts,
+                localState.transactions,
+                localState.transfers,
+                localState.recurring,
+              )
+              await uploadLocalSnapshot({
+                ...localState,
+                accounts: normalized.accounts,
+                transactions: normalized.transactions,
+                transfers: normalized.transfers,
+                recurring: normalized.recurring,
+              })
+              set({
+                accounts: normalized.accounts,
+                transactions: normalized.transactions,
+                transfers: normalized.transfers,
+                recurring: normalized.recurring,
+                supabaseLoaded: true,
+                syncError: null,
+              })
               return
             }
 
@@ -539,15 +627,8 @@ export const useTransactionStore = create<TransactionStore>()(
             const budgetsToUpload = getMissingById(localState.budgets, data.budgets, shouldMergeLocal)
             const goalsToUpload = getMissingById(localState.goals, data.goals, shouldMergeLocal)
             const recurringToUpload = getMissingById(localState.recurring, data.recurring, shouldMergeLocal)
-            const categoriesToUpload = getMissingById(localState.customCategories, data.customCategories, shouldMergeLocal)
-            const deletedCustomCategoryIds = Array.isArray(localState.deletedCustomCategoryIds)
-              ? localState.deletedCustomCategoryIds
-              : []
-            const cloudCustomCategories = excludeDeletedCustomCategories(data.customCategories, deletedCustomCategoryIds)
-
             await Promise.all([
               ...accountsToUpload.map((account) => dbUpsertAccount(account)),
-              ...categoriesToUpload.map((category) => dbUpsertCustomCategory(category)),
               ...transactionsToUpload.map((tx) => dbUpsertTransaction(tx)),
               ...transfersToUpload.map((transfer) => dbUpsertTransfer(transfer)),
               ...budgetsToUpload.map((budget) => dbUpsertBudget(budget)),
@@ -555,19 +636,33 @@ export const useTransactionStore = create<TransactionStore>()(
               ...recurringToUpload.map((rec) => dbUpsertRecurring(rec)),
             ])
 
+            const mergedAccounts = mergeById(data.accounts, localState.accounts, shouldMergeLocal)
+            const mergedTransactions = mergeById(data.transactions, localState.transactions, shouldMergeLocal)
+            const mergedTransfers = mergeById(data.transfers, localState.transfers, shouldMergeLocal)
+            const mergedRecurring = mergeById(data.recurring, localState.recurring, shouldMergeLocal)
+            const normalized = normalizeDefaultAccountDuplicates(
+              mergedAccounts,
+              mergedTransactions,
+              mergedTransfers,
+              mergedRecurring,
+            )
+
+            if (normalized.replacedAccountIds.length > 0) {
+              await Promise.all(normalized.replacedAccountIds.map(async ({ fromId, toId }) => {
+                await dbReplaceAccountReferences(fromId, toId)
+                await dbDeleteAccount(fromId)
+              }))
+            }
+
             set({
-              accounts: mergeById(data.accounts, localState.accounts, shouldMergeLocal),
-              transactions: mergeById(data.transactions, localState.transactions, shouldMergeLocal),
-              transfers: mergeById(data.transfers, localState.transfers, shouldMergeLocal),
+              accounts: normalized.accounts,
+              transactions: normalized.transactions,
+              transfers: normalized.transfers,
               budgets: mergeById(data.budgets, localState.budgets, shouldMergeLocal),
               goals: mergeById(data.goals, localState.goals, shouldMergeLocal),
-              recurring: mergeById(data.recurring, localState.recurring, shouldMergeLocal),
-              customCategories: excludeDeletedCustomCategories(
-                mergeById(cloudCustomCategories, localState.customCategories, shouldMergeLocal),
-                deletedCustomCategoryIds,
-              ),
+              recurring: normalized.recurring,
+              customCategories: data.customCategories,
               hiddenCategoryIds: localState.hiddenCategoryIds,
-              deletedCustomCategoryIds,
               settings: data.settings ?? localState.settings,
               profile: data.profile ?? localState.profile,
               supabaseLoaded: true,
@@ -588,7 +683,7 @@ export const useTransactionStore = create<TransactionStore>()(
     },
     {
       name: 'dds-tracker-store',
-      version: 7,
+      version: 9,
       migrate: (persistedState: any) => {
         const baseAccounts: Account[] = Array.isArray(persistedState?.accounts) && persistedState.accounts.length > 0
           ? persistedState.accounts.map((a: any) => ({ ...a, archived: a.archived ?? false }))
@@ -602,18 +697,18 @@ export const useTransactionStore = create<TransactionStore>()(
           baseTransfers,
           baseRecurring,
         )
-        const fallbackId = accounts[0]?.id ?? getDefaultAccountId()
+        const normalized = normalizeDefaultAccountDuplicates(accounts, transactions, transfers, recurring)
+        const fallbackId = normalized.accounts[0]?.id ?? getDefaultAccountId()
         return {
           ...persistedState,
-          accounts,
+          accounts: normalized.accounts,
           supabaseLoaded: false,
           syncError: null,
-          customCategories: Array.isArray(persistedState?.customCategories) ? persistedState.customCategories : [],
+          customCategories: [],
           hiddenCategoryIds: Array.isArray(persistedState?.hiddenCategoryIds) ? persistedState.hiddenCategoryIds : [],
-          deletedCustomCategoryIds: Array.isArray(persistedState?.deletedCustomCategoryIds) ? persistedState.deletedCustomCategoryIds : [],
-          transfers,
-          transactions: transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId })),
-          recurring: recurring.map((rec: any) => ({ ...rec, accountId: rec.accountId || fallbackId })),
+          transfers: normalized.transfers,
+          transactions: normalized.transactions.map((tx: any) => ({ ...tx, accountId: tx.accountId || fallbackId })),
+          recurring: normalized.recurring.map((rec: any) => ({ ...rec, accountId: rec.accountId || fallbackId })),
           profile: {
             fullName: persistedState?.profile?.fullName ?? '',
             email: persistedState?.profile?.email ?? '',
@@ -626,6 +721,10 @@ export const useTransactionStore = create<TransactionStore>()(
           },
         }
       },
+      partialize: (state) => ({
+        ...state,
+        customCategories: [],
+      }),
     }
   )
 )
